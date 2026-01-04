@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"strings"
 	"unicode"
 
@@ -8,11 +9,34 @@ import (
 )
 
 func ValidateEmail(email string) error {
-	return validation.ValidateEmail(email)
+	err := validation.ValidateEmail(email)
+	if err != nil {
+		// Convert validation errors to auth domain errors
+		if errors.Is(err, validation.ErrEmailInvalid) ||
+			errors.Is(err, validation.ErrEmailTooLong) ||
+			errors.Is(err, validation.ErrEmailLocalTooLong) {
+			return ErrInvalidEmail
+		}
+		return err
+	}
+	return nil
 }
 
 func ValidatePassword(password string) error {
-	return validation.ValidatePassword(password)
+	err := validation.ValidatePassword(password)
+	if err != nil {
+		// Convert validation errors to auth domain errors
+		if errors.Is(err, validation.ErrPasswordTooShort) ||
+			errors.Is(err, validation.ErrPasswordTooLong) ||
+			errors.Is(err, validation.ErrPasswordNoUppercase) ||
+			errors.Is(err, validation.ErrPasswordNoLowercase) ||
+			errors.Is(err, validation.ErrPasswordNoDigit) ||
+			errors.Is(err, validation.ErrPasswordNoSpecial) {
+			return ErrInvalidPassword
+		}
+		return err
+	}
+	return nil
 }
 
 func ValidateUsername(username string) error {
