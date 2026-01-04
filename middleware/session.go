@@ -103,18 +103,113 @@ func GetSessionID(ctx context.Context) string {
 	return ""
 }
 
-// RoleChecker is an interface for checking user roles.
+// RoleChecker is an interface for checking user roles and permissions.
 type RoleChecker interface {
-	HasRole(ctx context.Context, userID string, role string) (bool, error)
+	HasRole(ctx context.Context, userID string, roleName string) (bool, error)
+	CheckPermission(ctx context.Context, userID string, permission string) (bool, error)
+	CheckAnyPermission(ctx context.Context, userID string, permissions []string) (bool, error)
+	CheckAllPermissions(ctx context.Context, userID string, permissions []string) (bool, error)
 }
 
 // RequireRole creates middleware that requires a specific role.
-// For MVP, this is a simple implementation. Later we can optimize by including roles in the token.
-func RequireRole(requiredRole string) func(http.Handler) http.Handler {
+func RequireRole(checker RoleChecker, roleName string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// For MVP, we'll implement role checking in the handler layer
-			// This middleware serves as a placeholder for now
+			userID := GetUserID(r.Context())
+			if userID == "" {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			hasRole, err := checker.HasRole(r.Context(), userID, roleName)
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			if !hasRole {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequirePermission creates middleware that requires a specific permission.
+func RequirePermission(checker RoleChecker, permission string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID := GetUserID(r.Context())
+			if userID == "" {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			hasPermission, err := checker.CheckPermission(r.Context(), userID, permission)
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			if !hasPermission {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAnyPermission creates middleware that requires any of the specified permissions.
+func RequireAnyPermission(checker RoleChecker, permissions []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID := GetUserID(r.Context())
+			if userID == "" {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			hasPermission, err := checker.CheckAnyPermission(r.Context(), userID, permissions)
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			if !hasPermission {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAllPermissions creates middleware that requires all of the specified permissions.
+func RequireAllPermissions(checker RoleChecker, permissions []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID := GetUserID(r.Context())
+			if userID == "" {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			hasPermissions, err := checker.CheckAllPermissions(r.Context(), userID, permissions)
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			if !hasPermissions {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
 			next.ServeHTTP(w, r)
 		})
 	}
