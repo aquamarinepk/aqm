@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/aquamarinepk/aqm/auth"
@@ -12,7 +13,12 @@ import (
 func setupTestMongo(t *testing.T) (*mongo.Collection, func()) {
 	t.Helper()
 
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI("mongodb://localhost:27017"))
+	uri := os.Getenv("MONGO_URI")
+	if uri == "" {
+		uri = "mongodb://localhost:27017"
+	}
+
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
 	if err != nil {
 		t.Skip("MongoDB not available, skipping integration tests")
 	}
