@@ -26,6 +26,19 @@ jobs:
         ports:
           - 5432:5432
 
+      mongodb:
+        image: mongo:8
+        env:
+          MONGO_INITDB_ROOT_USERNAME: mongo
+          MONGO_INITDB_ROOT_PASSWORD: mongo
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -48,18 +61,19 @@ jobs:
           DB_USER: postgres
           DB_PASSWORD: postgres
           DB_NAME: postgres
+          MONGO_URI: mongodb://mongo:mongo@localhost:27017
         run: |
-          go test -v -race -coverprofile=coverage.out $(go list ./... | grep -v '/tmp/')
+          go test -v -race -coverprofile=coverage.out $(go list ./... | grep -v -e '/tmp/' -e '/build/')
 
       - name: Check coverage percentage
         run: |
           COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
           echo "Coverage: $COVERAGE%"
-          if (( $(echo "$COVERAGE < 70.0" | bc -l) )); then
-            echo "❌ Coverage $COVERAGE% is below 70% threshold"
+          if (( $(echo "$COVERAGE < 85.0" | bc -l) )); then
+            echo "❌ Coverage $COVERAGE% is below 85% threshold"
             exit 1
           else
-            echo "✅ Coverage $COVERAGE% meets the 70% threshold"
+            echo "✅ Coverage $COVERAGE% meets the 85% threshold"
           fi
 
       - name: Generate coverage report
