@@ -32,6 +32,93 @@ func TestWithPing(t *testing.T) {
 	}
 }
 
+func TestWithHealthChecks(t *testing.T) {
+	r := chi.NewRouter()
+
+	if err := ApplyRouterOptions(r, WithHealthChecks("test-service", "1.0.0")); err != nil {
+		t.Fatalf("ApplyRouterOptions() error = %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("handleHealthCheck() status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, `"status":"ok"`) {
+		t.Error("handleHealthCheck() body should contain status:ok")
+	}
+
+	if !strings.Contains(body, `"service":"test-service"`) {
+		t.Error("handleHealthCheck() body should contain service name")
+	}
+
+	if !strings.Contains(body, `"version":"1.0.0"`) {
+		t.Error("handleHealthCheck() body should contain version")
+	}
+}
+
+func TestWithDefaultStack(t *testing.T) {
+	r := chi.NewRouter()
+
+	if err := ApplyRouterOptions(r, WithDefaultStack()); err != nil {
+		t.Fatalf("ApplyRouterOptions() error = %v", err)
+	}
+
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("WithDefaultStack() status = %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+
+func TestWithDefaultInternalStack(t *testing.T) {
+	r := chi.NewRouter()
+
+	if err := ApplyRouterOptions(r, WithDefaultInternalStack()); err != nil {
+		t.Fatalf("ApplyRouterOptions() error = %v", err)
+	}
+
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	tests := []struct {
+		name       string
+		remoteAddr string
+		wantStatus int
+	}{
+		{"localhost", "127.0.0.1:1234", http.StatusOK},
+		{"private IP", "10.0.0.1:1234", http.StatusOK},
+		{"public IP", "8.8.8.8:1234", http.StatusForbidden},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			req.RemoteAddr = tt.remoteAddr
+			rec := httptest.NewRecorder()
+
+			r.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantStatus {
+				t.Errorf("WithDefaultInternalStack() status = %d, want %d", rec.Code, tt.wantStatus)
+			}
+		})
+	}
+}
+
 func TestWithDebugRoutes(t *testing.T) {
 	r := chi.NewRouter()
 
@@ -87,6 +174,26 @@ func TestApplyRouterOptions(t *testing.T) {
 			opts:    []RouterOption{WithPing(), WithDebugRoutes()},
 			wantErr: false,
 		},
+		{
+			name:    "with health checks",
+			opts:    []RouterOption{WithHealthChecks("test", "1.0.0")},
+			wantErr: false,
+		},
+		{
+			name:    "with default stack",
+			opts:    []RouterOption{WithDefaultStack()},
+			wantErr: false,
+		},
+		{
+			name:    "with default internal stack",
+			opts:    []RouterOption{WithDefaultInternalStack()},
+			wantErr: false,
+		},
+		{
+			name:    "all options",
+			opts:    []RouterOption{WithDefaultInternalStack(), WithPing(), WithDebugRoutes(), WithHealthChecks("test", "1.0.0")},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -134,8 +241,8 @@ func TestMultipleOptionsIntegration(t *testing.T) {
 }
 
 func TestNewRouter(t *testing.T) {
-	log := logger.NewLogger("error")
-	r := NewRouter(log, WithPing(), WithDebugRoutes())
+	logger := log.NewLogger("error")
+	r := NewRouter(logger, WithPing(), WithDebugRoutes())
 
 	// Test that ping endpoint works
 	req := httptest.NewRequest(http.MethodGet, "/ping", nil)

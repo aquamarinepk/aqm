@@ -55,8 +55,14 @@ func main() {
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
 
-    // 4. Create router
-    router := app.NewRouter(log, app.WithPing(), app.WithDebugRoutes())
+    // 4. Create router with options
+    router := app.NewRouter(log)
+    app.ApplyRouterOptions(router,
+        app.WithDefaultInternalStack(),
+        app.WithPing(),
+        app.WithDebugRoutes(),
+        app.WithHealthChecks(name, version),
+    )
 
     // 5. Build dependencies
     var deps []any
@@ -188,6 +194,70 @@ func (s *Service) RegisterRoutes(r chi.Router) {
     s.authzHandler.RegisterRoutes(r)
 }
 ```
+
+## Router Options
+
+AQM provides a clean RouterOptions pattern for configuring the HTTP router. All configuration happens in `app.ApplyRouterOptions()`.
+
+### Standard Setup
+
+The recommended pattern for all services:
+
+```go
+router := app.NewRouter(logger)
+app.ApplyRouterOptions(router,
+    app.WithDefaultInternalStack(),  // Middleware + InternalOnly
+    app.WithPing(),                   // GET /ping
+    app.WithDebugRoutes(),            // GET /debug/routes
+    app.WithHealthChecks(name, version), // GET /health
+)
+```
+
+### Available Options
+
+**Middleware Options:**
+
+- `WithDefaultStack()` - Standard middleware (RequestID, RealIP, Logger, Recoverer)
+- `WithDefaultInternalStack()` - DefaultStack + InternalOnly restriction
+
+**Route Options:**
+
+- `WithPing()` - Adds `GET /ping` endpoint returning `{"status":"ok"}`
+- `WithDebugRoutes()` - Adds `GET /debug/routes` listing all registered routes
+- `WithHealthChecks(name, version)` - Adds `GET /health` with service info
+
+### Internal vs Public Services
+
+**Internal services** (not exposed to public internet):
+```go
+app.WithDefaultInternalStack()  // Includes InternalOnly restriction
+```
+
+**Public services** (exposed to internet):
+```go
+app.WithDefaultStack()  // No IP restrictions
+```
+
+The `InternalOnly` middleware restricts access to:
+- Localhost (127.0.0.1, ::1)
+- Private IPv4 ranges (10.x, 172.16-31.x, 192.168.x)
+- IPv6 ULA (fc00::/7, fd00::/8)
+
+**Defense-in-depth**: This complements (does not replace) network policies at the infrastructure level.
+
+### Custom Middleware
+
+Additional middleware can be added directly:
+
+```go
+router := app.NewRouter(logger)
+app.ApplyRouterOptions(router, app.WithDefaultStack())
+router.Use(customMiddleware1)
+router.Use(customMiddleware2)
+app.ApplyRouterOptions(router, app.WithPing(), app.WithDebugRoutes())
+```
+
+**Important**: Middleware must be added BEFORE routes.
 
 ## Lifecycle Flow
 

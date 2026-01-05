@@ -1,12 +1,14 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/aquamarinepk/aqm/log"
+	"github.com/aquamarinepk/aqm/middleware"
 )
 
 // RouterOption configures optional features for the main router.
@@ -41,6 +43,30 @@ func WithPing() RouterOption {
 	}
 }
 
+// WithHealthChecks enables GET /health endpoint with service information.
+func WithHealthChecks(name, version string) RouterOption {
+	return func(r chi.Router) error {
+		r.Get("/health", handleHealthCheck(name, version))
+		return nil
+	}
+}
+
+// WithDefaultStack applies the default middleware stack (RequestID, RealIP, Logger, Recoverer).
+func WithDefaultStack() RouterOption {
+	return func(r chi.Router) error {
+		r.Use(middleware.DefaultStack()...)
+		return nil
+	}
+}
+
+// WithDefaultInternalStack applies the default middleware stack plus InternalOnly restriction.
+func WithDefaultInternalStack() RouterOption {
+	return func(r chi.Router) error {
+		r.Use(middleware.DefaultInternal()...)
+		return nil
+	}
+}
+
 // ApplyRouterOptions applies all router options.
 func ApplyRouterOptions(r chi.Router, opts ...RouterOption) error {
 	for _, opt := range opts {
@@ -55,6 +81,20 @@ func handlePing(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func handleHealthCheck(name, version string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		health := map[string]string{
+			"status":  "ok",
+			"service": name,
+			"version": version,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(health)
+	}
 }
 
 func handleDebugRoutes(w http.ResponseWriter, r *http.Request) {

@@ -11,7 +11,6 @@ import (
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/config"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/internal"
 	"github.com/aquamarinepk/aqm/log"
-	"github.com/aquamarinepk/aqm/middleware"
 )
 
 const (
@@ -32,8 +31,12 @@ func main() {
 	defer cancel()
 
 	router := app.NewRouter(logger)
-	router.Use(middleware.DefaultStack()...)
-	app.ApplyRouterOptions(router, app.WithPing(), app.WithDebugRoutes())
+	app.ApplyRouterOptions(router,
+		app.WithDefaultInternalStack(),
+		app.WithPing(),
+		app.WithDebugRoutes(),
+		app.WithHealthChecks(name, version),
+	)
 
 	var deps []any
 
