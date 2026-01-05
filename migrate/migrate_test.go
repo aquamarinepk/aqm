@@ -32,7 +32,7 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 }
 
 func TestNew(t *testing.T) {
-	log := logger.NewLogger("error")
+	logger := log.NewLogger("error")
 
 	tests := []struct {
 		name   string
@@ -50,7 +50,7 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			migrator := New(testAssetsFS, tt.engine, log)
+			migrator := New(testAssetsFS, tt.engine, logger)
 
 			if migrator == nil {
 				t.Error("expected migrator to be created")
@@ -67,8 +67,8 @@ func TestMigratorRunCreatesTable(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	log := logger.NewLogger("error")
-	migrator := New(testAssetsFS, "postgres", log)
+	logger := log.NewLogger("error")
+	migrator := New(testAssetsFS, "postgres", logger)
 	migrator.SetDB(db)
 	migrator.SetPath("testdata/migration/postgres")
 
@@ -98,8 +98,8 @@ func TestMigratorRunWithMigrations(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	log := logger.NewLogger("error")
-	migrator := New(testAssetsFS, "postgres", log)
+	logger := log.NewLogger("error")
+	migrator := New(testAssetsFS, "postgres", logger)
 	migrator.SetDB(db)
 	migrator.SetPath("testdata/migration/postgres")
 
@@ -139,8 +139,8 @@ func TestMigratorRunIdempotent(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	log := logger.NewLogger("error")
-	migrator := New(testAssetsFS, "postgres", log)
+	logger := log.NewLogger("error")
+	migrator := New(testAssetsFS, "postgres", logger)
 	migrator.SetDB(db)
 	migrator.SetPath("testdata/migration/postgres")
 
@@ -172,8 +172,8 @@ func TestMigratorRunIdempotent(t *testing.T) {
 }
 
 func TestSetPath(t *testing.T) {
-	log := logger.NewLogger("error")
-	migrator := New(testAssetsFS, "postgres", log)
+	logger := log.NewLogger("error")
+	migrator := New(testAssetsFS, "postgres", logger)
 
 	tests := []struct {
 		name string
@@ -204,8 +204,8 @@ func TestSetDB(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	log := logger.NewLogger("error")
-	migrator := New(testAssetsFS, "postgres", log)
+	logger := log.NewLogger("error")
+	migrator := New(testAssetsFS, "postgres", logger)
 
 	if migrator.db != nil {
 		t.Error("expected db to be nil before SetDB")

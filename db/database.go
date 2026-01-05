@@ -18,15 +18,15 @@ type Database struct {
 	engine        string
 	migrationPath string
 	cfg           *config.Config
-	log           logger.Logger
+	log           log.Logger
 }
 
-func New(assetsFS embed.FS, engine string, cfg *config.Config, log logger.Logger) *Database {
+func New(assetsFS embed.FS, engine string, cfg *config.Config, logger log.Logger) *Database {
 	return &Database{
 		assetsFS: assetsFS,
 		engine:   engine,
 		cfg:      cfg,
-		log:      log,
+		log:      logger,
 	}
 }
 

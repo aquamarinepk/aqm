@@ -255,8 +255,8 @@ func setupTestContainerWithConfig(t *testing.T, ctx context.Context) (*config.Co
 }
 
 // TestLogger returns a logger suitable for testing
-func TestLogger() logger.Logger {
-	return logger.NewLogger("error")
+func TestLogger() log.Logger {
+	return log.NewLogger("error")
 }
 
 func getEnvOrDefault(key, defaultValue string) string {

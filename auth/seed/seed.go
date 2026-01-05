@@ -18,16 +18,16 @@ type Seeder struct {
 	roles  auth.RoleStore
 	grants auth.GrantStore
 	cfg    *Config
-	log    logger.Logger
+	log    log.Logger
 }
 
-func New(users auth.UserStore, roles auth.RoleStore, grants auth.GrantStore, cfg *Config, log logger.Logger) *Seeder {
+func New(users auth.UserStore, roles auth.RoleStore, grants auth.GrantStore, cfg *Config, logger log.Logger) *Seeder {
 	return &Seeder{
 		users:  users,
 		roles:  roles,
 		grants: grants,
 		cfg:    cfg,
-		log:    log,
+		log:    logger,
 	}
 }
 

@@ -104,7 +104,7 @@ func TestSeeder_SeedRole(t *testing.T) {
 				EncryptionKey: []byte("test-encryption-key-32-bytes!"),
 				SigningKey:    []byte("test-signing-key"),
 			}
-			seeder := New(userStore, roleStore, grantStore, cfg, logger.NewNoopLogger())
+			seeder := New(userStore, roleStore, grantStore, cfg, log.NewNoopLogger())
 
 			role, err := seeder.SeedRole(context.Background(), tt.input)
 
@@ -268,7 +268,7 @@ func TestSeeder_SeedUser(t *testing.T) {
 				EncryptionKey: encKey,
 				SigningKey:    sigKey,
 			}
-			seeder := New(userStore, roleStore, grantStore, cfg, logger.NewNoopLogger())
+			seeder := New(userStore, roleStore, grantStore, cfg, log.NewNoopLogger())
 
 			user, err := seeder.SeedUser(context.Background(), tt.input)
 
@@ -423,7 +423,7 @@ func TestSeeder_SeedGrant(t *testing.T) {
 				EncryptionKey: encKey,
 				SigningKey:    sigKey,
 			}
-			seeder := New(userStore, roleStore, grantStore, cfg, logger.NewNoopLogger())
+			seeder := New(userStore, roleStore, grantStore, cfg, log.NewNoopLogger())
 
 			userID, roleID := tt.setupFunc(context.Background(), seeder)
 
@@ -453,9 +453,9 @@ func TestSeeder_New(t *testing.T) {
 		EncryptionKey: []byte("test-key"),
 		SigningKey:    []byte("test-sig"),
 	}
-	log := logger.NewNoopLogger()
+	logger := log.NewNoopLogger()
 
-	seeder := New(userStore, roleStore, grantStore, cfg, log)
+	seeder := New(userStore, roleStore, grantStore, cfg, logger)
 
 	if seeder == nil {
 		t.Fatal("expected seeder to be created")
@@ -472,7 +472,7 @@ func TestSeeder_New(t *testing.T) {
 	if seeder.cfg != cfg {
 		t.Error("config not set correctly")
 	}
-	if seeder.log != log {
+	if seeder.log != logger {
 		t.Error("logger not set correctly")
 	}
 }

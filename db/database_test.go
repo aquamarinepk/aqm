@@ -19,7 +19,7 @@ func setupTestPostgres(t *testing.T) (*config.Config, func()) {
 }
 
 func TestNew(t *testing.T) {
-	log := logger.NewLogger("error")
+	logger := log.NewLogger("error")
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "localhost",
@@ -32,7 +32,7 @@ func TestNew(t *testing.T) {
 		},
 	}
 
-	db := New(testAssetsFS, "postgres", cfg, log)
+	db := New(testAssetsFS, "postgres", cfg, logger)
 
 	if db == nil {
 		t.Error("expected database to be created")
@@ -47,8 +47,8 @@ func TestStartAndStop(t *testing.T) {
 	cfg, cleanup := setupTestPostgres(t)
 	defer cleanup()
 
-	log := logger.NewLogger("error")
-	db := New(testAssetsFS, "postgres", cfg, log)
+	logger := log.NewLogger("error")
+	db := New(testAssetsFS, "postgres", cfg, logger)
 	db.SetMigrationPath("testdata/migration/postgres")
 
 	ctx := context.Background()
@@ -86,8 +86,8 @@ func TestStartWithMigrations(t *testing.T) {
 	cfg, cleanup := setupTestPostgres(t)
 	defer cleanup()
 
-	log := logger.NewLogger("error")
-	db := New(testAssetsFS, "postgres", cfg, log)
+	logger := log.NewLogger("error")
+	db := New(testAssetsFS, "postgres", cfg, logger)
 	db.SetMigrationPath("testdata/migration/postgres")
 
 	ctx := context.Background()
@@ -111,7 +111,7 @@ func TestStartWithMigrations(t *testing.T) {
 }
 
 func TestStartWithInvalidConfig(t *testing.T) {
-	log := logger.NewLogger("error")
+	logger := log.NewLogger("error")
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host",
@@ -123,7 +123,7 @@ func TestStartWithInvalidConfig(t *testing.T) {
 		},
 	}
 
-	db := New(testAssetsFS, "postgres", cfg, log)
+	db := New(testAssetsFS, "postgres", cfg, logger)
 	ctx := context.Background()
 
 	if err := db.Start(ctx); err == nil {
@@ -132,10 +132,10 @@ func TestStartWithInvalidConfig(t *testing.T) {
 }
 
 func TestStopWithoutStart(t *testing.T) {
-	log := logger.NewLogger("error")
+	logger := log.NewLogger("error")
 	cfg := &config.Config{}
 
-	db := New(testAssetsFS, "postgres", cfg, log)
+	db := New(testAssetsFS, "postgres", cfg, logger)
 	ctx := context.Background()
 
 	if err := db.Stop(ctx); err != nil {

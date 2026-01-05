@@ -24,18 +24,18 @@ type Migration struct {
 // Migrator handles database migrations with version tracking.
 type Migrator struct {
 	db       *sql.DB
-	log      logger.Logger
+	log      log.Logger
 	assetsFS embed.FS
 	engine   string
 	path     string
 }
 
 // New creates a new Migrator.
-func New(assetsFS embed.FS, engine string, log logger.Logger) *Migrator {
+func New(assetsFS embed.FS, engine string, logger log.Logger) *Migrator {
 	return &Migrator{
 		assetsFS: assetsFS,
 		engine:   engine,
-		log:      log,
+		log:      logger,
 	}
 }
 
