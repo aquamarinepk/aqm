@@ -10,12 +10,12 @@ DB_HOST?=localhost
 DB_PORT?=5432
 DB_USER?=dev
 DB_PASS?=dev
-DB_AUTHN?=ticked_authn
-DB_AUTHZ?=ticked_authz
-DB_ADMIN?=ticked_admin
+DB_AUTHN?=authn
+DB_AUTHZ?=authz
+DB_ADMIN?=admin
 
 # Phony targets
-.PHONY: help build run stop logs logs-clear fresh test test-all clean db-init db-drop db-reset
+.PHONY: help build run run-fake stop logs logs-clear fresh test test-all clean db-init db-drop db-reset
 
 help:
 	@echo "Ticked orchestration commands:"
@@ -100,6 +100,47 @@ run: build
 		export ADMIN_DATABASE_USER=$(DB_USER) && \
 		export ADMIN_DATABASE_PASSWORD=$(DB_PASS) && \
 		export ADMIN_DATABASE_NAME=$(DB_ADMIN) && \
+		export ADMIN_SERVER_PORT=:8084 && \
+		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8082 && \
+		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
+		export ADMIN_PREFLIGHT_ENABLED=true && \
+		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
+		sleep 2
+	@echo ""
+	@echo "🎉 All services started!"
+	@echo "📡 Services running:"
+	@echo "   • AuthN: http://localhost:8082 (authentication)"
+	@echo "   • AuthZ: http://localhost:8083 (authorization)"
+	@echo "   • Admin: http://localhost:8084 (admin interface)"
+	@echo ""
+	@echo "💡 View logs: make logs"
+	@echo "🛑 Stop services: make stop"
+
+# Run all services with fake driver (for testing)
+run-fake: build
+	@echo "🚀 Starting Ticked services (fake driver)..."
+	@$(MAKE) stop > /dev/null 2>&1 || true
+	@echo ""
+	@echo "   📦 Starting AuthN on :8082..."
+	@cd services/authn && \
+		export AUTHN_DATABASE_DRIVER=fake && \
+		export AUTHN_SERVER_PORT=:8082 && \
+		export AUTHN_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
+		export AUTHN_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
+		export AUTHN_CRYPTO_TOKENPRIVATEKEY=mTn8gRo4YfobTBcc8zooULexXqUVWYa0LK7fE6r3lGM+1bhgC58dvsd/XgNwO6J8Eddw4ra+Q6SaPKocCZMJqA== && \
+		nohup ./authn > authn.log 2>&1 & echo $$! > authn.pid; \
+		sleep 2
+	@echo "   📦 Starting AuthZ on :8083..."
+	@cd services/authz && \
+		export AUTHZ_DATABASE_DRIVER=fake && \
+		export AUTHZ_SERVER_PORT=:8083 && \
+		export AUTHZ_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
+		export AUTHZ_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
+		nohup ./authz > authz.log 2>&1 & echo $$! > authz.pid; \
+		sleep 2
+	@echo "   📦 Starting Admin on :8084..."
+	@cd services/admin && \
+		export ADMIN_DATABASE_DRIVER=fake && \
 		export ADMIN_SERVER_PORT=:8084 && \
 		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8082 && \
 		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
