@@ -11,7 +11,7 @@ import (
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/config"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/internal"
 	"github.com/aquamarinepk/aqm/log"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/aquamarinepk/aqm/middleware"
 )
 
 const (
@@ -32,10 +32,7 @@ func main() {
 	defer cancel()
 
 	router := app.NewRouter(logger)
-	router.Use(middleware.RequestID)
-	router.Use(middleware.RealIP)
-	router.Use(middleware.Logger)
-	router.Use(middleware.Recoverer)
+	router.Use(middleware.DefaultStack()...)
 	app.ApplyRouterOptions(router, app.WithPing(), app.WithDebugRoutes())
 
 	var deps []any
