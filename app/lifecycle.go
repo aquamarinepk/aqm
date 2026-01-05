@@ -57,13 +57,13 @@ func Setup(ctx context.Context, r chi.Router, comps ...any) (
 //
 // This ensures transactional-like behavior: either all components start successfully
 // or none remain running.
-func Start(ctx context.Context, log logger.Logger, starts []func(context.Context) error, stops []func(context.Context) error, registrars []RouteRegistrar, router chi.Router) error {
+func Start(ctx context.Context, logger log.Logger, starts []func(context.Context) error, stops []func(context.Context) error, registrars []RouteRegistrar, router chi.Router) error {
 	for i, start := range starts {
 		if err := start(ctx); err != nil {
-			log.Errorf("error starting component #%d: %v", i, err)
+			logger.Errorf("error starting component #%d: %v", i, err)
 			for j := i - 1; j >= 0; j-- {
 				if rErr := stops[j](context.Background()); rErr != nil {
-					log.Errorf("error stopping component #%d during rollback: %v", j, rErr)
+					logger.Errorf("error stopping component #%d during rollback: %v", j, rErr)
 				}
 			}
 			return err
@@ -97,19 +97,19 @@ func Serve(router chi.Router, port string) error {
 //
 // This ensures proper cleanup cascade: server stops accepting requests,
 // then components clean up in reverse dependency order.
-func Shutdown(srv *http.Server, log logger.Logger, stops []func(context.Context) error) {
-	log.Info("Shutting down gracefully, press Ctrl+C again to force")
+func Shutdown(srv *http.Server, logger log.Logger, stops []func(context.Context) error) {
+	logger.Info("Shutting down gracefully, press Ctrl+C again to force")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Errorf("server shutdown failed: %v", err)
+		logger.Errorf("server shutdown failed: %v", err)
 	}
 
 	for i := len(stops) - 1; i >= 0; i-- {
 		if err := stops[i](context.Background()); err != nil {
-			log.Errorf("error stopping component #%d: %v", i, err)
+			logger.Errorf("error stopping component #%d: %v", i, err)
 		}
 	}
 }

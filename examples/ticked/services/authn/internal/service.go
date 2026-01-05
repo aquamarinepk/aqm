@@ -12,7 +12,6 @@ import (
 	"github.com/aquamarinepk/aqm/auth/service"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/config"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 // Service coordinates the authn service components and manages lifecycle.
@@ -120,13 +119,6 @@ func (s *Service) Start(ctx context.Context) error {
 
 // RegisterRoutes registers all HTTP routes for the service.
 func (s *Service) RegisterRoutes(r chi.Router) {
-	// Add middleware
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	// Register handler routes
 	s.authnHandler.RegisterRoutes(r)
 	s.authzHandler.RegisterRoutes(r)
 }
