@@ -1,0 +1,22 @@
+# AuthZ Service Configuration
+#
+# This file provides default values for the authz service.
+# Values can be overridden via environment variables with AUTHZ_ prefix.
+#
+# Example: AUTHZ_SERVER_PORT=":9000" overrides server.port
+
+server:
+  port: ":8083"
+
+database:
+  driver: fake  # "fake" for development, "postgres" for production
+  host: localhost
+  port: 5432
+  user: authz
+  password: authz
+  database: ticked
+  schema: authz
+  sslmode: disable
+
+log:
+  level: debug  # debug, info, error
