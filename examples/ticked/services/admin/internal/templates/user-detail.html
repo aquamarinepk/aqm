@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Admin</title>
+    <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <a href="/admin">Dashboard</a>
+            <a href="/admin/list-users">Users</a>
+        </nav>
+
+        <a href="/admin/list-users" class="back-link">← Back to Users</a>
+
+        <h1>{{.Title}}</h1>
+
+        <div class="detail-section">
+            <h2>User Information</h2>
+            <div class="detail-grid">
+                <div class="detail-label">ID</div>
+                <div class="detail-value">{{.User.ID}}</div>
+
+                <div class="detail-label">Username</div>
+                <div class="detail-value">{{.User.Username}}</div>
+
+                <div class="detail-label">Email</div>
+                <div class="detail-value">{{.User.Email}}</div>
+
+                <div class="detail-label">Status</div>
+                <div class="detail-value">
+                    <span class="status status-{{.User.Status}}">{{.User.Status}}</span>
+                </div>
+
+                <div class="detail-label">Created</div>
+                <div class="detail-value">{{.User.CreatedAt.Format "2006-01-02 15:04:05"}}</div>
+
+                <div class="detail-label">Updated</div>
+                <div class="detail-value">{{.User.UpdatedAt.Format "2006-01-02 15:04:05"}}</div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h2>Roles</h2>
+            {{if .Roles}}
+            <ul class="roles-list">
+                {{range .Roles}}
+                <li class="role-item">
+                    <div class="role-name">{{.Name}}</div>
+                    <div class="role-description">{{.Description}}</div>
+                    {{if .Permissions}}
+                    <ul class="role-permissions">
+                        {{range .Permissions}}
+                        <li class="permission-tag">{{.}}</li>
+                        {{end}}
+                    </ul>
+                    {{end}}
+                </li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p>No roles assigned</p>
+            {{end}}
+        </div>
+    </div>
+</body>
+</html>

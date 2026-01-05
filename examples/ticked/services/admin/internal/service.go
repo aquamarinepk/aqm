@@ -15,8 +15,8 @@ type Service struct {
 	cfg    *config.Config
 	log    log.Logger
 
-	authnClient *httpclient.Client
-	authzClient *httpclient.Client
+	authnClient *AuthNClient
+	authzClient *AuthZClient
 
 	handler *Handler
 }
@@ -30,8 +30,11 @@ func New(cfg *config.Config, logger log.Logger) (*Service, error) {
 	authnURL := cfg.GetStringOrDef("services.authn.url", "http://localhost:8082")
 	authzURL := cfg.GetStringOrDef("services.authz.url", "http://localhost:8083")
 
-	s.authnClient = httpclient.New(authnURL, logger)
-	s.authzClient = httpclient.New(authzURL, logger)
+	httpAuthnClient := httpclient.New(authnURL, logger)
+	httpAuthzClient := httpclient.New(authzURL, logger)
+
+	s.authnClient = NewAuthNClient(httpAuthnClient)
+	s.authzClient = NewAuthZClient(httpAuthzClient)
 
 	s.handler = NewHandler(s.authnClient, s.authzClient, cfg, logger)
 

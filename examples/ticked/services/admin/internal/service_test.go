@@ -168,6 +168,31 @@ func TestStartWithPreflight(t *testing.T) {
 	}
 }
 
+func TestStartWithPreflightFailure(t *testing.T) {
+	clearTestEnvVars(t)
+	os.Setenv("ADMIN_DATABASE_DRIVER", "fake")
+	os.Setenv("ADMIN_SERVER_PORT", ":8084")
+	os.Setenv("ADMIN_SERVICES_AUTHN_URL", "http://localhost:9999")
+	os.Setenv("ADMIN_SERVICES_AUTHZ_URL", "http://localhost:9998")
+	os.Setenv("ADMIN_PREFLIGHT_ENABLED", "true")
+
+	logger := log.NewLogger("error")
+	cfg, err := config.New(logger, config.WithPrefix("ADMIN_"))
+	if err != nil {
+		t.Fatalf("config.New() error: %v", err)
+	}
+
+	svc, err := New(cfg, logger)
+	if err != nil {
+		t.Fatalf("New() error: %v", err)
+	}
+
+	ctx := context.Background()
+	if err := svc.Start(ctx); err == nil {
+		t.Error("Start() expected error from preflight failure, got nil")
+	}
+}
+
 func TestRegisterRoutes(t *testing.T) {
 	cfg := validTestConfig(t)
 	logger := log.NewLogger("error")
