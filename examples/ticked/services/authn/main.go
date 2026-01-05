@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,24 +9,27 @@ import (
 
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/config"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/internal"
+	log "github.com/aquamarinepk/aqm/log"
 )
 
 func main() {
+	// Create logger
+	logger := log.NewLogger("info")
+
 	// Load configuration
-	log.Println("Loading configuration...")
-	cfg, err := config.Load("AUTHN_")
+	logger.Info("Loading configuration...")
+	cfg, err := config.New(logger)
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		logger.Errorf("Failed to load config: %v", err)
+		os.Exit(1)
 	}
 
-	log.Printf("Config loaded: driver=%s, port=%s, log=%s",
-		cfg.Database.Driver, cfg.Server.Port, cfg.Log.Level)
-
 	// Create service
-	log.Println("Creating service...")
+	logger.Info("Creating service...")
 	svc, err := internal.New(cfg)
 	if err != nil {
-		log.Fatalf("Failed to create service: %v", err)
+		logger.Errorf("Failed to create service: %v", err)
+		os.Exit(1)
 	}
 
 	// Setup graceful shutdown
@@ -46,26 +48,26 @@ func main() {
 		}
 	}()
 
-	log.Println("Service started. Press Ctrl+C to stop.")
-	log.Printf("API available at http://localhost%s", cfg.Server.Port)
+	logger.Info("Service started. Press Ctrl+C to stop.")
+	logger.Infof("API available at http://localhost%s", cfg.Server.Port)
 
 	// Wait for shutdown signal or error
 	select {
 	case sig := <-sigCh:
-		log.Printf("Received signal: %v", sig)
+		logger.Infof("Received signal: %v", sig)
 	case err := <-errCh:
-		log.Printf("Service error: %v", err)
+		logger.Errorf("Service error: %v", err)
 	}
 
 	// Graceful shutdown
-	log.Println("Shutting down...")
+	logger.Info("Shutting down...")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
 	if err := svc.Stop(shutdownCtx); err != nil {
-		log.Printf("Shutdown error: %v", err)
+		logger.Errorf("Shutdown error: %v", err)
 		os.Exit(1)
 	}
 
-	log.Println("Service stopped")
+	logger.Info("Service stopped")
 }
