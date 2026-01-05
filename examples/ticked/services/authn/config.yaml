@@ -1,0 +1,27 @@
+server:
+  port: ":8080"
+
+database:
+  driver: "fake"
+  host: "localhost"
+  port: 5432
+  user: "authn"
+  password: "authn"
+  database: "authn"
+  sslmode: "disable"
+
+crypto:
+  # Generate keys with: make keygen
+  # DO NOT use these example keys in production!
+  encryptionkey: ""
+  signingkey: ""
+  tokenprivatekey: ""
+
+auth:
+  tokenttl: "24h"
+  passwordlength: 32
+  enablebootstrap: true
+
+log:
+  level: "info"
+  format: "text"
