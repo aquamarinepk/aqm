@@ -51,16 +51,16 @@ func WithHealthChecks(name, version string) RouterOption {
 	}
 }
 
-// WithDefaultStack applies the default middleware stack (RequestID, RealIP, Logger, Recoverer).
-func WithDefaultStack() RouterOption {
+// WithDefaultMiddlewares applies the default middleware stack (RequestID, RealIP, Logger, Recoverer).
+func WithDefaultMiddlewares() RouterOption {
 	return func(r chi.Router) error {
 		r.Use(middleware.DefaultStack()...)
 		return nil
 	}
 }
 
-// WithDefaultInternalStack applies the default middleware stack plus InternalOnly restriction.
-func WithDefaultInternalStack() RouterOption {
+// WithDefaultInternalMiddlewares applies the default middleware stack plus InternalOnly restriction.
+func WithDefaultInternalMiddlewares() RouterOption {
 	return func(r chi.Router) error {
 		r.Use(middleware.DefaultInternal()...)
 		return nil

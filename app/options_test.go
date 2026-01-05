@@ -62,10 +62,10 @@ func TestWithHealthChecks(t *testing.T) {
 	}
 }
 
-func TestWithDefaultStack(t *testing.T) {
+func TestWithDefaultMiddlewares(t *testing.T) {
 	r := chi.NewRouter()
 
-	if err := ApplyRouterOptions(r, WithDefaultStack()); err != nil {
+	if err := ApplyRouterOptions(r, WithDefaultMiddlewares()); err != nil {
 		t.Fatalf("ApplyRouterOptions() error = %v", err)
 	}
 
@@ -79,14 +79,14 @@ func TestWithDefaultStack(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("WithDefaultStack() status = %d, want %d", rec.Code, http.StatusOK)
+		t.Errorf("WithDefaultMiddlewares() status = %d, want %d", rec.Code, http.StatusOK)
 	}
 }
 
-func TestWithDefaultInternalStack(t *testing.T) {
+func TestWithDefaultInternalMiddlewares(t *testing.T) {
 	r := chi.NewRouter()
 
-	if err := ApplyRouterOptions(r, WithDefaultInternalStack()); err != nil {
+	if err := ApplyRouterOptions(r, WithDefaultInternalMiddlewares()); err != nil {
 		t.Fatalf("ApplyRouterOptions() error = %v", err)
 	}
 
@@ -113,7 +113,7 @@ func TestWithDefaultInternalStack(t *testing.T) {
 			r.ServeHTTP(rec, req)
 
 			if rec.Code != tt.wantStatus {
-				t.Errorf("WithDefaultInternalStack() status = %d, want %d", rec.Code, tt.wantStatus)
+				t.Errorf("WithDefaultInternalMiddlewares() status = %d, want %d", rec.Code, tt.wantStatus)
 			}
 		})
 	}
@@ -180,18 +180,18 @@ func TestApplyRouterOptions(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "with default stack",
-			opts:    []RouterOption{WithDefaultStack()},
+			name:    "with default middlewares",
+			opts:    []RouterOption{WithDefaultMiddlewares()},
 			wantErr: false,
 		},
 		{
-			name:    "with default internal stack",
-			opts:    []RouterOption{WithDefaultInternalStack()},
+			name:    "with default internal middlewares",
+			opts:    []RouterOption{WithDefaultInternalMiddlewares()},
 			wantErr: false,
 		},
 		{
 			name:    "all options",
-			opts:    []RouterOption{WithDefaultInternalStack(), WithPing(), WithDebugRoutes(), WithHealthChecks("test", "1.0.0")},
+			opts:    []RouterOption{WithDefaultInternalMiddlewares(), WithPing(), WithDebugRoutes(), WithHealthChecks("test", "1.0.0")},
 			wantErr: false,
 		},
 	}

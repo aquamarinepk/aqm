@@ -32,7 +32,7 @@ func main() {
 
 	router := app.NewRouter(logger)
 	app.ApplyRouterOptions(router,
-		app.WithDefaultInternalStack(),
+		app.WithDefaultInternalMiddlewares(),
 		app.WithPing(),
 		app.WithDebugRoutes(),
 		app.WithHealthChecks(name, version),
