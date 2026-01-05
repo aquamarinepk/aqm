@@ -192,7 +192,7 @@ func (h *AuthNHandler) handleGeneratePIN(w http.ResponseWriter, r *http.Request)
 }
 
 type UserResponse struct {
-	User *auth.User `json:"user"`
+	User *auth.User `json:"data"`
 }
 
 func (h *AuthNHandler) handleGetUser(w http.ResponseWriter, r *http.Request) {
@@ -225,7 +225,7 @@ func (h *AuthNHandler) handleGetUserByUsername(w http.ResponseWriter, r *http.Re
 }
 
 type ListUsersResponse struct {
-	Users []*auth.User `json:"users"`
+	Users []*auth.User `json:"data"`
 }
 
 func (h *AuthNHandler) handleListUsers(w http.ResponseWriter, r *http.Request) {
