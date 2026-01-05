@@ -263,6 +263,96 @@ func (c *Config) Exists(path string) bool {
 	return c.k.Exists(path)
 }
 
+// GetInt64 returns the int64 value for the given path.
+func (c *Config) GetInt64(path string) int64 {
+	return c.k.Int64(path)
+}
+
+// GetStringSlice returns a slice of strings for the given path.
+func (c *Config) GetStringSlice(path string) []string {
+	return c.k.Strings(path)
+}
+
+// GetStringOrDef returns the string value for the given path,
+// or the default value if the path doesn't exist or is empty.
+func (c *Config) GetStringOrDef(path, defaultValue string) string {
+	if !c.k.Exists(path) {
+		return defaultValue
+	}
+	val := c.k.String(path)
+	if val == "" {
+		return defaultValue
+	}
+	return val
+}
+
+// GetIntOrDef returns the int value for the given path,
+// or the default value if the path doesn't exist.
+func (c *Config) GetIntOrDef(path string, defaultValue int) int {
+	if !c.k.Exists(path) {
+		return defaultValue
+	}
+	return c.k.Int(path)
+}
+
+// GetInt64OrDef returns the int64 value for the given path,
+// or the default value if the path doesn't exist.
+func (c *Config) GetInt64OrDef(path string, defaultValue int64) int64 {
+	if !c.k.Exists(path) {
+		return defaultValue
+	}
+	return c.k.Int64(path)
+}
+
+// GetBoolOrDef returns the bool value for the given path,
+// or the default value if the path doesn't exist.
+func (c *Config) GetBoolOrDef(path string, defaultValue bool) bool {
+	if !c.k.Exists(path) {
+		return defaultValue
+	}
+	return c.k.Bool(path)
+}
+
+// GetFloat64OrDef returns the float64 value for the given path,
+// or the default value if the path doesn't exist.
+func (c *Config) GetFloat64OrDef(path string, defaultValue float64) float64 {
+	if !c.k.Exists(path) {
+		return defaultValue
+	}
+	return c.k.Float64(path)
+}
+
+// GetDurationOrDef parses and returns a time.Duration for the given path,
+// or the default value if the path doesn't exist or parsing fails.
+func (c *Config) GetDurationOrDef(path string, defaultValue time.Duration) time.Duration {
+	if !c.k.Exists(path) {
+		return defaultValue
+	}
+	s := c.k.String(path)
+	if s == "" {
+		return defaultValue
+	}
+	duration, err := time.ParseDuration(s)
+	if err != nil {
+		c.logger.Debugf("Failed to parse duration for %s: %v, using default", path, err)
+		return defaultValue
+	}
+	return duration
+}
+
+// GetStringSliceOrDef returns a slice of strings for the given path,
+// or the default value if the path doesn't exist or is empty.
+func (c *Config) GetStringSliceOrDef(path string, defaultValue []string) []string {
+	if !c.k.Exists(path) {
+		return defaultValue
+	}
+	val := c.k.Strings(path)
+	if len(val) == 0 {
+		return defaultValue
+	}
+	return val
+}
+
 // Validate validates the configuration.
 func (c *Config) Validate() error {
 	// Validate Server
