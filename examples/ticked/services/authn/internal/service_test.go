@@ -8,67 +8,100 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/aquamarinepk/aqm/log"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/config"
 )
 
-func validTestConfig() *config.Config {
+func validTestConfig(t *testing.T) *config.Config {
+	t.Helper()
+
 	validEncKey := hex.EncodeToString([]byte("12345678901234567890123456789012"))
 	validSignKey := hex.EncodeToString([]byte("abcdefghijklmnopqrstuvwxyz123456"))
 	validTokenKey := base64.StdEncoding.EncodeToString(make([]byte, 64))
 
-	return &config.Config{
-		Server: config.ServerConfig{
-			Port: ":8080",
-		},
-		Database: config.DatabaseConfig{
-			Driver: "fake",
-		},
-		Crypto: config.CryptoConfig{
-			EncryptionKey:   validEncKey,
-			SigningKey:      validSignKey,
-			TokenPrivateKey: validTokenKey,
-		},
-		Auth: config.AuthConfig{
-			TokenTTL:        "24h",
-			PasswordLength:  32,
-			EnableBootstrap: false,
-		},
-		Log: config.LogConfig{
-			Level:  "info",
-			Format: "text",
-		},
+	// Clear and set env vars
+	clearTestEnvVars(t)
+	os.Setenv("AUTHN_CRYPTO_ENCRYPTIONKEY", validEncKey)
+	os.Setenv("AUTHN_CRYPTO_SIGNINGKEY", validSignKey)
+	os.Setenv("AUTHN_CRYPTO_TOKENPRIVATEKEY", validTokenKey)
+	os.Setenv("AUTHN_DATABASE_DRIVER", "fake")
+	os.Setenv("AUTHN_SERVER_PORT", ":8080")
+	os.Setenv("AUTHN_AUTH_ENABLEBOOTSTRAP", "false")
+
+	logger := log.NewLogger("info")
+	cfg, err := config.New(logger)
+	if err != nil {
+		t.Fatalf("failed to create config: %v", err)
+	}
+
+	return cfg
+}
+
+func clearTestEnvVars(t *testing.T) {
+	t.Helper()
+	envVars := []string{
+		"AUTHN_SERVER_PORT",
+		"AUTHN_DATABASE_DRIVER",
+		"AUTHN_DATABASE_HOST",
+		"AUTHN_DATABASE_DATABASE",
+		"AUTHN_CRYPTO_ENCRYPTIONKEY",
+		"AUTHN_CRYPTO_SIGNINGKEY",
+		"AUTHN_CRYPTO_TOKENPRIVATEKEY",
+		"AUTHN_AUTH_TOKENTTL",
+		"AUTHN_AUTH_PASSWORDLENGTH",
+		"AUTHN_AUTH_ENABLEBOOTSTRAP",
+	}
+
+	for _, v := range envVars {
+		os.Unsetenv(v)
 	}
 }
 
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name    string
-		cfg     *config.Config
+		setup   func(*testing.T) *config.Config
 		wantErr bool
 	}{
 		{
-			name:    "valid fake config",
-			cfg:     validTestConfig(),
+			name: "valid fake config",
+			setup: func(t *testing.T) *config.Config {
+				return validTestConfig(t)
+			},
 			wantErr: false,
 		},
 		{
 			name: "postgres config",
-			cfg: func() *config.Config {
-				cfg := validTestConfig()
-				cfg.Database.Driver = "postgres"
-				cfg.Database.Host = "localhost"
-				cfg.Database.Database = "test"
+			setup: func(t *testing.T) *config.Config {
+				validEncKey := hex.EncodeToString([]byte("12345678901234567890123456789012"))
+				validSignKey := hex.EncodeToString([]byte("abcdefghijklmnopqrstuvwxyz123456"))
+				validTokenKey := base64.StdEncoding.EncodeToString(make([]byte, 64))
+
+				clearTestEnvVars(t)
+				os.Setenv("AUTHN_CRYPTO_ENCRYPTIONKEY", validEncKey)
+				os.Setenv("AUTHN_CRYPTO_SIGNINGKEY", validSignKey)
+				os.Setenv("AUTHN_CRYPTO_TOKENPRIVATEKEY", validTokenKey)
+				os.Setenv("AUTHN_DATABASE_DRIVER", "postgres")
+				os.Setenv("AUTHN_DATABASE_HOST", "localhost")
+				os.Setenv("AUTHN_DATABASE_DATABASE", "test")
+
+				logger := log.NewLogger("info")
+				cfg, err := config.New(logger)
+				if err != nil {
+					t.Fatalf("failed to create config: %v", err)
+				}
 				return cfg
-			}(),
+			},
 			wantErr: false, // Will skip if no DB available
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, err := New(tt.cfg)
+			cfg := tt.setup(t)
+			svc, err := New(cfg)
 
-			if tt.cfg.Database.Driver == "postgres" && err != nil {
+			if cfg.Database.Driver == "postgres" && err != nil {
 				// Skip if postgres is not available
 				t.Skip("skipping postgres test: database not available")
 				return
@@ -140,48 +173,88 @@ func TestNew(t *testing.T) {
 
 func TestNew_InvalidCryptoKeys(t *testing.T) {
 	tests := []struct {
-		name string
-		cfg  *config.Config
+		name  string
+		setup func(*testing.T)
 	}{
 		{
 			name: "invalid encryption key",
-			cfg: func() *config.Config {
-				cfg := validTestConfig()
-				cfg.Crypto.EncryptionKey = "invalid"
-				return cfg
-			}(),
+			setup: func(t *testing.T) {
+				validSignKey := hex.EncodeToString([]byte("abcdefghijklmnopqrstuvwxyz123456"))
+				validTokenKey := base64.StdEncoding.EncodeToString(make([]byte, 64))
+
+				clearTestEnvVars(t)
+				os.Setenv("AUTHN_CRYPTO_ENCRYPTIONKEY", "invalid")
+				os.Setenv("AUTHN_CRYPTO_SIGNINGKEY", validSignKey)
+				os.Setenv("AUTHN_CRYPTO_TOKENPRIVATEKEY", validTokenKey)
+			},
 		},
 		{
 			name: "invalid signing key",
-			cfg: func() *config.Config {
-				cfg := validTestConfig()
-				cfg.Crypto.SigningKey = "invalid"
-				return cfg
-			}(),
+			setup: func(t *testing.T) {
+				validEncKey := hex.EncodeToString([]byte("12345678901234567890123456789012"))
+				validTokenKey := base64.StdEncoding.EncodeToString(make([]byte, 64))
+
+				clearTestEnvVars(t)
+				os.Setenv("AUTHN_CRYPTO_ENCRYPTIONKEY", validEncKey)
+				os.Setenv("AUTHN_CRYPTO_SIGNINGKEY", "invalid")
+				os.Setenv("AUTHN_CRYPTO_TOKENPRIVATEKEY", validTokenKey)
+			},
 		},
 		{
 			name: "invalid token key",
-			cfg: func() *config.Config {
-				cfg := validTestConfig()
-				cfg.Crypto.TokenPrivateKey = "invalid"
-				return cfg
-			}(),
+			setup: func(t *testing.T) {
+				validEncKey := hex.EncodeToString([]byte("12345678901234567890123456789012"))
+				validSignKey := hex.EncodeToString([]byte("abcdefghijklmnopqrstuvwxyz123456"))
+
+				clearTestEnvVars(t)
+				os.Setenv("AUTHN_CRYPTO_ENCRYPTIONKEY", validEncKey)
+				os.Setenv("AUTHN_CRYPTO_SIGNINGKEY", validSignKey)
+				os.Setenv("AUTHN_CRYPTO_TOKENPRIVATEKEY", "invalid")
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := New(tt.cfg)
+			tt.setup(t)
+			logger := log.NewLogger("info")
+			cfg, err := config.New(logger)
 			if err == nil {
-				t.Error("New() expected error for invalid key, got nil")
+				t.Error("config.New() expected error for invalid key, got nil")
+				return
+			}
+
+			// If config creation failed (validation), that's expected
+			// If config was created, service creation should fail
+			if cfg != nil {
+				_, err := New(cfg)
+				if err == nil {
+					t.Error("New() expected error for invalid key, got nil")
+				}
 			}
 		})
 	}
 }
 
 func TestBootstrap(t *testing.T) {
-	cfg := validTestConfig()
-	cfg.Auth.EnableBootstrap = true
+	cfg := validTestConfig(t)
+
+	// Re-create config with bootstrap enabled
+	clearTestEnvVars(t)
+	validEncKey := hex.EncodeToString([]byte("12345678901234567890123456789012"))
+	validSignKey := hex.EncodeToString([]byte("abcdefghijklmnopqrstuvwxyz123456"))
+	validTokenKey := base64.StdEncoding.EncodeToString(make([]byte, 64))
+
+	os.Setenv("AUTHN_CRYPTO_ENCRYPTIONKEY", validEncKey)
+	os.Setenv("AUTHN_CRYPTO_SIGNINGKEY", validSignKey)
+	os.Setenv("AUTHN_CRYPTO_TOKENPRIVATEKEY", validTokenKey)
+	os.Setenv("AUTHN_AUTH_ENABLEBOOTSTRAP", "true")
+
+	logger := log.NewLogger("info")
+	cfg, err := config.New(logger)
+	if err != nil {
+		t.Fatalf("config.New() error: %v", err)
+	}
 
 	svc, err := New(cfg)
 	if err != nil {
@@ -202,9 +275,24 @@ func TestBootstrap(t *testing.T) {
 }
 
 func TestStartStop(t *testing.T) {
-	// Use a random available port
-	cfg := validTestConfig()
-	cfg.Server.Port = ":0" // Let OS assign a port
+	cfg := validTestConfig(t)
+
+	// Re-create config with dynamic port
+	clearTestEnvVars(t)
+	validEncKey := hex.EncodeToString([]byte("12345678901234567890123456789012"))
+	validSignKey := hex.EncodeToString([]byte("abcdefghijklmnopqrstuvwxyz123456"))
+	validTokenKey := base64.StdEncoding.EncodeToString(make([]byte, 64))
+
+	os.Setenv("AUTHN_CRYPTO_ENCRYPTIONKEY", validEncKey)
+	os.Setenv("AUTHN_CRYPTO_SIGNINGKEY", validSignKey)
+	os.Setenv("AUTHN_CRYPTO_TOKENPRIVATEKEY", validTokenKey)
+	os.Setenv("AUTHN_SERVER_PORT", ":0") // Let OS assign a port
+
+	logger := log.NewLogger("info")
+	cfg, err := config.New(logger)
+	if err != nil {
+		t.Fatalf("config.New() error: %v", err)
+	}
 
 	svc, err := New(cfg)
 	if err != nil {
@@ -248,9 +336,22 @@ func TestStartWithBootstrap(t *testing.T) {
 	os.Stdout, _ = os.Open(os.DevNull)
 	defer func() { os.Stdout = oldLogger }()
 
-	cfg := validTestConfig()
-	cfg.Server.Port = ":0"
-	cfg.Auth.EnableBootstrap = true
+	clearTestEnvVars(t)
+	validEncKey := hex.EncodeToString([]byte("12345678901234567890123456789012"))
+	validSignKey := hex.EncodeToString([]byte("abcdefghijklmnopqrstuvwxyz123456"))
+	validTokenKey := base64.StdEncoding.EncodeToString(make([]byte, 64))
+
+	os.Setenv("AUTHN_CRYPTO_ENCRYPTIONKEY", validEncKey)
+	os.Setenv("AUTHN_CRYPTO_SIGNINGKEY", validSignKey)
+	os.Setenv("AUTHN_CRYPTO_TOKENPRIVATEKEY", validTokenKey)
+	os.Setenv("AUTHN_SERVER_PORT", ":0")
+	os.Setenv("AUTHN_AUTH_ENABLEBOOTSTRAP", "true")
+
+	logger := log.NewLogger("info")
+	cfg, err := config.New(logger)
+	if err != nil {
+		t.Fatalf("config.New() error: %v", err)
+	}
 
 	svc, err := New(cfg)
 	if err != nil {

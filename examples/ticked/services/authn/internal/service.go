@@ -66,29 +66,29 @@ func New(cfg *config.Config) (*Service, error) {
 	}
 
 	// Initialize crypto services
-	encKey, err := cfg.Crypto.DecodeEncryptionKey()
+	encKey, err := cfg.DecodeEncryptionKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode encryption key: %w", err)
 	}
 
-	signKey, err := cfg.Crypto.DecodeSigningKey()
+	signKey, err := cfg.DecodeSigningKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode signing key: %w", err)
 	}
 
-	tokenKey, err := cfg.Crypto.DecodeTokenPrivateKey()
+	tokenKey, err := cfg.DecodeTokenPrivateKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode token private key: %w", err)
 	}
 
-	tokenTTL, err := cfg.Auth.ParseTokenTTL()
+	tokenTTL, err := cfg.ParseTokenTTL()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token TTL: %w", err)
 	}
 
 	s.crypto = service.NewDefaultCryptoService(encKey, signKey)
 	s.tokenGen = service.NewDefaultTokenGenerator(ed25519.PrivateKey(tokenKey), tokenTTL)
-	s.pwdGen = service.NewDefaultPasswordGenerator(cfg.Auth.PasswordLength)
+	s.pwdGen = service.NewDefaultPasswordGenerator(cfg.GetPasswordLength())
 	s.pinGen = service.NewDefaultPINGenerator()
 
 	// Initialize handlers
@@ -112,7 +112,7 @@ func New(cfg *config.Config) (*Service, error) {
 // and starts listening for requests. This method blocks until the server is shutdown.
 func (s *Service) Start(ctx context.Context) error {
 	// Bootstrap superadmin if enabled
-	if s.cfg.Auth.EnableBootstrap {
+	if s.cfg.IsBootstrapEnabled() {
 		if err := s.bootstrap(ctx); err != nil {
 			return fmt.Errorf("bootstrap failed: %w", err)
 		}
