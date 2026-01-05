@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aquamarinepk/aqm/config"
 	log "github.com/aquamarinepk/aqm/log"
-	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/config"
 )
 
 func validTestConfig(t *testing.T) *config.Config {
@@ -29,7 +29,17 @@ func validTestConfig(t *testing.T) *config.Config {
 	os.Setenv("AUTHN_AUTH_ENABLEBOOTSTRAP", "false")
 
 	logger := log.NewLogger("info")
-	cfg, err := config.New(logger)
+	cfg, err := config.New(logger,
+		config.WithPrefix("AUTHN_"),
+		config.WithDefaults(map[string]interface{}{
+			"crypto.encryptionkey":   "",
+			"crypto.signingkey":      "",
+			"crypto.tokenprivatekey": "",
+			"auth.tokenttl":          "24h",
+			"auth.passwordlength":    32,
+			"auth.enablebootstrap":   true,
+		}),
+	)
 	if err != nil {
 		t.Fatalf("failed to create config: %v", err)
 	}

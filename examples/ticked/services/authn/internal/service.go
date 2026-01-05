@@ -4,13 +4,15 @@ import (
 	"context"
 	"crypto/ed25519"
 	"database/sql"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"log"
 
 	"github.com/aquamarinepk/aqm/auth"
 	"github.com/aquamarinepk/aqm/auth/handler"
 	"github.com/aquamarinepk/aqm/auth/service"
-	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/config"
+	"github.com/aquamarinepk/aqm/config"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -62,29 +64,43 @@ func New(cfg *config.Config) (*Service, error) {
 	}
 
 	// Initialize crypto services
-	encKey, err := cfg.DecodeEncryptionKey()
+	encKeyStr := cfg.GetString("crypto.encryptionkey")
+	if encKeyStr == "" {
+		return nil, fmt.Errorf("crypto.encryptionkey is required")
+	}
+	encKey, err := hex.DecodeString(encKeyStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode encryption key: %w", err)
 	}
 
-	signKey, err := cfg.DecodeSigningKey()
+	signKeyStr := cfg.GetString("crypto.signingkey")
+	if signKeyStr == "" {
+		return nil, fmt.Errorf("crypto.signingkey is required")
+	}
+	signKey, err := hex.DecodeString(signKeyStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode signing key: %w", err)
 	}
 
-	tokenKey, err := cfg.DecodeTokenPrivateKey()
+	tokenKeyStr := cfg.GetString("crypto.tokenprivatekey")
+	if tokenKeyStr == "" {
+		return nil, fmt.Errorf("crypto.tokenprivatekey is required")
+	}
+	tokenKey, err := base64.StdEncoding.DecodeString(tokenKeyStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode token private key: %w", err)
 	}
 
-	tokenTTL, err := cfg.ParseTokenTTL()
+	tokenTTL, err := cfg.GetDuration("auth.tokenttl")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token TTL: %w", err)
 	}
 
+	passwordLength := cfg.GetIntOrDef("auth.passwordlength", 32)
+
 	s.crypto = service.NewDefaultCryptoService(encKey, signKey)
 	s.tokenGen = service.NewDefaultTokenGenerator(ed25519.PrivateKey(tokenKey), tokenTTL)
-	s.pwdGen = service.NewDefaultPasswordGenerator(cfg.GetPasswordLength())
+	s.pwdGen = service.NewDefaultPasswordGenerator(passwordLength)
 	s.pinGen = service.NewDefaultPINGenerator()
 
 	// Initialize handlers
@@ -107,7 +123,7 @@ func New(cfg *config.Config) (*Service, error) {
 // Start initializes the service and optionally bootstraps the superadmin user.
 func (s *Service) Start(ctx context.Context) error {
 	// Bootstrap superadmin if enabled
-	if s.cfg.IsBootstrapEnabled() {
+	if s.cfg.GetBoolOrDef("auth.enablebootstrap", true) {
 		if err := s.bootstrap(ctx); err != nil {
 			return fmt.Errorf("bootstrap failed: %w", err)
 		}

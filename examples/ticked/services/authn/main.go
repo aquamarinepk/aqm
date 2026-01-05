@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"github.com/aquamarinepk/aqm/app"
-	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/config"
+	"github.com/aquamarinepk/aqm/config"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/internal"
 	"github.com/aquamarinepk/aqm/log"
 )
@@ -21,7 +21,18 @@ const (
 func main() {
 	logger := log.NewLogger("info")
 
-	cfg, err := config.New(logger)
+	cfg, err := config.New(logger,
+		config.WithPrefix("AUTHN_"),
+		config.WithFile("config.yaml"),
+		config.WithDefaults(map[string]interface{}{
+			"crypto.encryptionkey":   "",
+			"crypto.signingkey":      "",
+			"crypto.tokenprivatekey": "",
+			"auth.tokenttl":          "24h",
+			"auth.passwordlength":    32,
+			"auth.enablebootstrap":   true,
+		}),
+	)
 	if err != nil {
 		logger.Errorf("Cannot load config: %v", err)
 		os.Exit(1)
