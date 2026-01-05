@@ -65,8 +65,10 @@ curl -X POST http://localhost:8080/auth/signup \
 
 ## Configuration
 
+The authn service uses the `aqm/config` package for configuration management with service-specific extensions for authentication parameters. See [`/config/README.md`](../../../../config/README.md) for complete documentation of the base configuration system.
+
 Configuration loads in this order (later sources override earlier):
-1. Embedded YAML defaults
+1. Default values
 2. `config.yaml` file (if present)
 3. Environment variables (if set)
 
