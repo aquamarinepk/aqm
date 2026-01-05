@@ -33,8 +33,9 @@ type Service struct {
 	pinGen   service.PINGenerator
 
 	// Handlers
-	authnHandler *handler.AuthNHandler
-	authzHandler *handler.AuthZHandler
+	authnHandler  *handler.AuthNHandler
+	authzHandler  *handler.AuthZHandler
+	systemHandler *handler.SystemHandler
 }
 
 // New creates a new Service with the given configuration.
@@ -117,6 +118,12 @@ func New(cfg *config.Config) (*Service, error) {
 		s.grantStore,
 	)
 
+	s.systemHandler = handler.NewSystemHandler(
+		s.userStore,
+		s.crypto,
+		s.pwdGen,
+	)
+
 	return s, nil
 }
 
@@ -137,6 +144,7 @@ func (s *Service) Start(ctx context.Context) error {
 func (s *Service) RegisterRoutes(r chi.Router) {
 	s.authnHandler.RegisterRoutes(r)
 	s.authzHandler.RegisterRoutes(r)
+	s.systemHandler.RegisterRoutes(r)
 }
 
 // Stop gracefully shuts down the service and closes database connections.

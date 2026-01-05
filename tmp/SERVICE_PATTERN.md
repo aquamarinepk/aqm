@@ -30,9 +30,9 @@ import (
     "syscall"
 
     "github.com/aquamarinepk/aqm/app"
+    "github.com/aquamarinepk/aqm/log"
     "github.com/yourservice/config"
     "github.com/yourservice/internal"
-    logger "github.com/aquamarinepk/aqm/log"
 )
 
 const (
@@ -42,12 +42,12 @@ const (
 
 func main() {
     // 1. Create logger
-    log := logger.NewLogger("info")
+    logger := log.NewLogger("info")
 
     // 2. Load configuration
-    cfg, err := config.New(log)
+    cfg, err := config.New(logger)
     if err != nil {
-        log.Errorf("Cannot load config: %v", err)
+        logger.Errorf("Cannot load config: %v", err)
         os.Exit(1)
     }
 
@@ -56,9 +56,9 @@ func main() {
     defer cancel()
 
     // 4. Create router with options
-    router := app.NewRouter(log)
+    router := app.NewRouter(logger)
     app.ApplyRouterOptions(router,
-        app.WithDefaultInternalStack(),
+        app.WithDefaultInternalMiddlewares(),
         app.WithPing(),
         app.WithDebugRoutes(),
         app.WithHealthChecks(name, version),
@@ -69,7 +69,7 @@ func main() {
 
     svc, err := internal.New(cfg)
     if err != nil {
-        log.Errorf("Cannot create service: %v", err)
+        logger.Errorf("Cannot create service: %v", err)
         os.Exit(1)
     }
 
@@ -79,18 +79,18 @@ func main() {
     starts, stops, registrars := app.Setup(ctx, router, deps...)
 
     // 7. Start components
-    if err := app.Start(ctx, log, starts, stops, registrars, router); err != nil {
-        log.Errorf("Cannot start %s(%s): %v", name, version, err)
+    if err := app.Start(ctx, logger, starts, stops, registrars, router); err != nil {
+        logger.Errorf("Cannot start %s(%s): %v", name, version, err)
         os.Exit(1)
     }
 
-    log.Infof("%s(%s) started successfully", name, version)
+    logger.Infof("%s(%s) started successfully", name, version)
 
     // 8. Start HTTP server
     go func() {
-        log.Infof("Server listening on %s", cfg.Server.Port)
+        logger.Infof("Server listening on %s", cfg.Server.Port)
         if err := app.Serve(router, cfg.Server.Port); err != nil {
-            log.Errorf("Server error: %v", err)
+            logger.Errorf("Server error: %v", err)
         }
     }()
 
@@ -100,12 +100,12 @@ func main() {
     <-stop
 
     // 10. Graceful shutdown
-    log.Infof("Shutting down %s(%s)...", name, version)
+    logger.Infof("Shutting down %s(%s)...", name, version)
     cancel()
 
     for i := len(stops) - 1; i >= 0; i-- {
         if err := stops[i](context.Background()); err != nil {
-            log.Errorf("Error stopping component: %v", err)
+            logger.Errorf("Error stopping component: %v", err)
         }
     }
 
@@ -206,10 +206,10 @@ The recommended pattern for all services:
 ```go
 router := app.NewRouter(logger)
 app.ApplyRouterOptions(router,
-    app.WithDefaultInternalStack(),  // Middleware + InternalOnly
-    app.WithPing(),                   // GET /ping
-    app.WithDebugRoutes(),            // GET /debug/routes
-    app.WithHealthChecks(name, version), // GET /health
+    app.WithDefaultInternalMiddlewares(),  // Middleware + InternalOnly
+    app.WithPing(),                         // GET /ping
+    app.WithDebugRoutes(),                  // GET /debug/routes
+    app.WithHealthChecks(name, version),    // GET /health
 )
 ```
 
@@ -217,8 +217,8 @@ app.ApplyRouterOptions(router,
 
 **Middleware Options:**
 
-- `WithDefaultStack()` - Standard middleware (RequestID, RealIP, Logger, Recoverer)
-- `WithDefaultInternalStack()` - DefaultStack + InternalOnly restriction
+- `WithDefaultMiddlewares()` - Standard middleware (RequestID, RealIP, Logger, Recoverer)
+- `WithDefaultInternalMiddlewares()` - Default middleware + InternalOnly restriction
 
 **Route Options:**
 
@@ -230,12 +230,12 @@ app.ApplyRouterOptions(router,
 
 **Internal services** (not exposed to public internet):
 ```go
-app.WithDefaultInternalStack()  // Includes InternalOnly restriction
+app.WithDefaultInternalMiddlewares()  // Includes InternalOnly restriction
 ```
 
 **Public services** (exposed to internet):
 ```go
-app.WithDefaultStack()  // No IP restrictions
+app.WithDefaultMiddlewares()  // No IP restrictions
 ```
 
 The `InternalOnly` middleware restricts access to:
@@ -251,7 +251,7 @@ Additional middleware can be added directly:
 
 ```go
 router := app.NewRouter(logger)
-app.ApplyRouterOptions(router, app.WithDefaultStack())
+app.ApplyRouterOptions(router, app.WithDefaultMiddlewares())
 router.Use(customMiddleware1)
 router.Use(customMiddleware2)
 app.ApplyRouterOptions(router, app.WithPing(), app.WithDebugRoutes())
