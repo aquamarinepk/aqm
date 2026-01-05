@@ -4,126 +4,58 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
-	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/env"
-	"github.com/knadh/koanf/providers/rawbytes"
-	"github.com/knadh/koanf/v2"
+	aqmconfig "github.com/aquamarinepk/aqm/config"
+	log "github.com/aquamarinepk/aqm/log"
 )
 
+// Config wraps aqm.Config and adds authn-specific helpers.
 type Config struct {
-	Server   ServerConfig   `koanf:"server"`
-	Database DatabaseConfig `koanf:"database"`
-	Crypto   CryptoConfig   `koanf:"crypto"`
-	Auth     AuthConfig     `koanf:"auth"`
-	Log      LogConfig      `koanf:"log"`
+	*aqmconfig.Config // Embed for baseline access
 }
 
-type ServerConfig struct {
-	Port string `koanf:"port"`
-}
-
-type DatabaseConfig struct {
-	Driver   string `koanf:"driver"`
-	Host     string `koanf:"host"`
-	Port     int    `koanf:"port"`
-	User     string `koanf:"user"`
-	Password string `koanf:"password"`
-	Database string `koanf:"database"`
-	SSLMode  string `koanf:"sslmode"`
-}
-
-type CryptoConfig struct {
-	EncryptionKey   string `koanf:"encryptionkey"`
-	SigningKey      string `koanf:"signingkey"`
-	TokenPrivateKey string `koanf:"tokenprivatekey"`
-}
-
-type AuthConfig struct {
-	TokenTTL         string `koanf:"tokenttl"`
-	PasswordLength   int    `koanf:"passwordlength"`
-	EnableBootstrap  bool   `koanf:"enablebootstrap"`
-}
-
-type LogConfig struct {
-	Level  string `koanf:"level"`
-	Format string `koanf:"format"`
-}
-
-func New() *Config {
-	return &Config{
-		Server: ServerConfig{
-			Port: ":8080",
-		},
-		Database: DatabaseConfig{
-			Driver:   "fake",
-			Host:     "localhost",
-			Port:     5432,
-			User:     "dev",
-			Password: "dev",
-			Database: "authn_dev",
-			SSLMode:  "disable",
-		},
-		Crypto: CryptoConfig{
-			EncryptionKey:   "",
-			SigningKey:      "",
-			TokenPrivateKey: "",
-		},
-		Auth: AuthConfig{
-			TokenTTL:        "24h",
-			PasswordLength:  32,
-			EnableBootstrap: true,
-		},
-		Log: LogConfig{
-			Level:  "info",
-			Format: "text",
-		},
-	}
-}
-
-func Load(envPrefix string) (*Config, error) {
-	k := koanf.New(".")
-	cfg := New()
-
-	if err := k.Load(rawbytes.Provider(defaultConfigYAML), yaml.Parser()); err != nil {
-		return nil, fmt.Errorf("load default config: %w", err)
+// New creates authn service configuration.
+func New(logger log.Logger) (*Config, error) {
+	// Default values for authn-specific config
+	defaults := map[string]interface{}{
+		"crypto.encryptionkey":   "",
+		"crypto.signingkey":      "",
+		"crypto.tokenprivatekey": "",
+		"auth.tokenttl":          "24h",
+		"auth.passwordlength":    32,
+		"auth.enablebootstrap":   true,
+		"log.format":             "text",
 	}
 
-	if configPath := os.Getenv(envPrefix + "CONFIG_FILE"); configPath != "" {
-		if data, err := os.ReadFile(configPath); err == nil {
-			if err := k.Load(rawbytes.Provider(data), yaml.Parser()); err != nil {
-				return nil, fmt.Errorf("load config file %s: %w", configPath, err)
-			}
-		}
+	base, err := aqmconfig.New(logger,
+		aqmconfig.WithPrefix("AUTHN_"),
+		aqmconfig.WithFile("config.yaml"),
+		aqmconfig.WithDefaults(defaults),
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := k.Load(env.Provider(envPrefix, ".", func(s string) string {
-		return strings.Replace(strings.ToLower(
-			strings.TrimPrefix(s, envPrefix)), "_", ".", -1)
-	}), nil); err != nil {
-		return nil, fmt.Errorf("load environment variables: %w", err)
-	}
+	cfg := &Config{Config: base}
 
-	if err := k.Unmarshal("", cfg); err != nil {
-		return nil, fmt.Errorf("unmarshal config: %w", err)
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("validate config: %w", err)
+	// Validate authn-specific config
+	if err := cfg.ValidateAuthn(); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
 }
 
-func (c *Config) Validate() error {
-	if c.Crypto.EncryptionKey == "" {
+// ValidateAuthn validates authn-specific configuration.
+func (c *Config) ValidateAuthn() error {
+	// Validate crypto.encryptionkey
+	encKeyStr := c.GetString("crypto.encryptionkey")
+	if encKeyStr == "" {
 		return fmt.Errorf("crypto.encryptionkey is required")
 	}
 
-	encKey, err := hex.DecodeString(c.Crypto.EncryptionKey)
+	encKey, err := hex.DecodeString(encKeyStr)
 	if err != nil {
 		return fmt.Errorf("crypto.encryptionkey must be hex-encoded: %w", err)
 	}
@@ -131,11 +63,13 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("crypto.encryptionkey must be 32 bytes (64 hex chars), got %d bytes", len(encKey))
 	}
 
-	if c.Crypto.SigningKey == "" {
+	// Validate crypto.signingkey
+	signKeyStr := c.GetString("crypto.signingkey")
+	if signKeyStr == "" {
 		return fmt.Errorf("crypto.signingkey is required")
 	}
 
-	signKey, err := hex.DecodeString(c.Crypto.SigningKey)
+	signKey, err := hex.DecodeString(signKeyStr)
 	if err != nil {
 		return fmt.Errorf("crypto.signingkey must be hex-encoded: %w", err)
 	}
@@ -143,11 +77,13 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("crypto.signingkey must be 32 bytes (64 hex chars), got %d bytes", len(signKey))
 	}
 
-	if c.Crypto.TokenPrivateKey == "" {
+	// Validate crypto.tokenprivatekey
+	tokenKeyStr := c.GetString("crypto.tokenprivatekey")
+	if tokenKeyStr == "" {
 		return fmt.Errorf("crypto.tokenprivatekey is required")
 	}
 
-	tokenKey, err := base64.StdEncoding.DecodeString(c.Crypto.TokenPrivateKey)
+	tokenKey, err := base64.StdEncoding.DecodeString(tokenKeyStr)
 	if err != nil {
 		return fmt.Errorf("crypto.tokenprivatekey must be base64-encoded: %w", err)
 	}
@@ -155,94 +91,61 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("crypto.tokenprivatekey must be 64 bytes (Ed25519), got %d bytes", len(tokenKey))
 	}
 
-	if c.Auth.TokenTTL != "" {
-		if _, err := time.ParseDuration(c.Auth.TokenTTL); err != nil {
+	// Validate auth.tokenttl
+	tokenTTL := c.GetString("auth.tokenttl")
+	if tokenTTL != "" {
+		if _, err := time.ParseDuration(tokenTTL); err != nil {
 			return fmt.Errorf("auth.tokenttl invalid duration: %w", err)
 		}
 	}
 
-	if c.Auth.PasswordLength < 16 {
-		return fmt.Errorf("auth.passwordlength must be at least 16, got %d", c.Auth.PasswordLength)
+	// Validate auth.passwordlength
+	passwordLength := c.GetInt("auth.passwordlength")
+	if passwordLength < 16 {
+		return fmt.Errorf("auth.passwordlength must be at least 16, got %d", passwordLength)
 	}
 
-	validDrivers := map[string]bool{"fake": true, "postgres": true}
-	if !validDrivers[c.Database.Driver] {
-		return fmt.Errorf("database.driver must be 'fake' or 'postgres', got '%s'", c.Database.Driver)
-	}
-
-	if c.Database.Driver == "postgres" {
-		if c.Database.Host == "" {
-			return fmt.Errorf("database.host is required for postgres driver")
-		}
-		if c.Database.Database == "" {
-			return fmt.Errorf("database.database is required for postgres driver")
-		}
-	}
-
-	validLevels := map[string]bool{"debug": true, "info": true, "error": true}
-	if !validLevels[c.Log.Level] {
-		return fmt.Errorf("log.level must be 'debug', 'info', or 'error', got '%s'", c.Log.Level)
-	}
-
+	// Validate log.format
+	logFormat := c.GetString("log.format")
 	validFormats := map[string]bool{"text": true, "json": true}
-	if !validFormats[c.Log.Format] {
-		return fmt.Errorf("log.format must be 'text' or 'json', got '%s'", c.Log.Format)
+	if !validFormats[logFormat] {
+		return fmt.Errorf("log.format must be 'text' or 'json', got '%s'", logFormat)
 	}
 
 	return nil
 }
 
-func (c *DatabaseConfig) ConnectionString() string {
-	if c.Driver != "postgres" {
-		return ""
-	}
-
-	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.User, c.Password, c.Database, c.SSLMode,
-	)
+// DecodeEncryptionKey decodes the hex-encoded encryption key.
+func (c *Config) DecodeEncryptionKey() ([]byte, error) {
+	return hex.DecodeString(c.GetString("crypto.encryptionkey"))
 }
 
-func (c *CryptoConfig) DecodeEncryptionKey() ([]byte, error) {
-	return hex.DecodeString(c.EncryptionKey)
+// DecodeSigningKey decodes the hex-encoded signing key.
+func (c *Config) DecodeSigningKey() ([]byte, error) {
+	return hex.DecodeString(c.GetString("crypto.signingkey"))
 }
 
-func (c *CryptoConfig) DecodeSigningKey() ([]byte, error) {
-	return hex.DecodeString(c.SigningKey)
+// DecodeTokenPrivateKey decodes the base64-encoded token private key.
+func (c *Config) DecodeTokenPrivateKey() ([]byte, error) {
+	return base64.StdEncoding.DecodeString(c.GetString("crypto.tokenprivatekey"))
 }
 
-func (c *CryptoConfig) DecodeTokenPrivateKey() ([]byte, error) {
-	return base64.StdEncoding.DecodeString(c.TokenPrivateKey)
+// ParseTokenTTL parses the token TTL duration.
+func (c *Config) ParseTokenTTL() (time.Duration, error) {
+	return c.GetDuration("auth.tokenttl")
 }
 
-func (c *AuthConfig) ParseTokenTTL() (time.Duration, error) {
-	return time.ParseDuration(c.TokenTTL)
+// GetLogFormat returns the log format (text or json).
+func (c *Config) GetLogFormat() string {
+	return c.GetString("log.format")
 }
 
-var defaultConfigYAML = []byte(`
-server:
-  port: ":8080"
+// GetPasswordLength returns the password length.
+func (c *Config) GetPasswordLength() int {
+	return c.GetInt("auth.passwordlength")
+}
 
-database:
-  driver: "fake"
-  host: "localhost"
-  port: 5432
-  user: "dev"
-  password: "dev"
-  database: "authn_dev"
-  sslmode: "disable"
-
-crypto:
-  encryptionkey: ""
-  signingkey: ""
-  tokenprivatekey: ""
-
-auth:
-  tokenttl: "24h"
-  passwordlength: 32
-  enablebootstrap: true
-
-log:
-  level: "info"
-  format: "text"
-`)
+// IsBootstrapEnabled returns whether bootstrap is enabled.
+func (c *Config) IsBootstrapEnabled() bool {
+	return c.GetBool("auth.enablebootstrap")
+}
