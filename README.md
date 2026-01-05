@@ -80,6 +80,10 @@ Aquamarine favors **aggregate-oriented modeling** (DDD principles):
 **Non-relational:**
 - MongoDB support (planned, idiomatic Go approach)
 
+## Gallery
+
+See the [Gallery](docs/gallery.md) for visual examples of the aquamarine design system and reference implementations.
+
 ## Status
 
 Aquamarine is under active development.
