@@ -20,3 +20,13 @@ database:
 
 log:
   level: debug  # debug, info, error
+
+authn:
+  url: "http://localhost:8082"  # AuthN service URL for bootstrap coordination
+
+crypto:
+  encryptionkey: ""  # 32-byte hex string (same as authn for email encryption)
+  signingkey: ""     # 32-byte hex string (same as authn for lookups)
+
+auth:
+  enablebootstrap: true  # Enable automatic bootstrap on startup

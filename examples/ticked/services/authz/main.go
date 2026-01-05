@@ -43,7 +43,7 @@ func main() {
 
 	var deps []any
 
-	svc, err := internal.New(cfg)
+	svc, err := internal.New(cfg, logger)
 	if err != nil {
 		logger.Errorf("Cannot create service: %v", err)
 		os.Exit(1)

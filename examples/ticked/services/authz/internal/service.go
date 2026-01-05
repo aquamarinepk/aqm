@@ -3,11 +3,14 @@ package internal
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/aquamarinepk/aqm/auth"
 	"github.com/aquamarinepk/aqm/auth/handler"
+	"github.com/aquamarinepk/aqm/auth/seed"
 	"github.com/aquamarinepk/aqm/config"
+	"github.com/aquamarinepk/aqm/log"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -15,24 +18,25 @@ import (
 type Service struct {
 	cfg *config.Config
 	db  *sql.DB
+	log log.Logger
 
-	// Stores
 	roleStore  auth.RoleStore
 	grantStore auth.GrantStore
 
-	// Handlers
+	bootstrapService *BootstrapService
+
 	authzHandler *handler.AuthZHandler
 }
 
-// New creates a new Service with the given configuration.
-// It initializes stores (postgres or fake based on config) and HTTP handlers.
+// New creates a new Service with the given configuration and logger.
+// It initializes stores (postgres or fake based on config), bootstrap service, and HTTP handlers.
 // Returns an error if initialization fails.
-func New(cfg *config.Config) (*Service, error) {
+func New(cfg *config.Config, logger log.Logger) (*Service, error) {
 	s := &Service{
 		cfg: cfg,
+		log: logger,
 	}
 
-	// Initialize stores based on driver
 	if cfg.Database.Driver == "postgres" {
 		connStr := cfg.Database.ConnectionString()
 		roleStore, grantStore, db, err := NewPostgresStores(connStr)
@@ -48,14 +52,51 @@ func New(cfg *config.Config) (*Service, error) {
 		s.grantStore = grantStore
 	}
 
-	// Initialize handler
+	encKeyStr := cfg.GetString("crypto.encryptionkey")
+	if encKeyStr == "" {
+		return nil, fmt.Errorf("crypto.encryptionkey is required")
+	}
+	encKey, err := hex.DecodeString(encKeyStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode encryption key: %w", err)
+	}
+
+	signKeyStr := cfg.GetString("crypto.signingkey")
+	if signKeyStr == "" {
+		return nil, fmt.Errorf("crypto.signingkey is required")
+	}
+	signKey, err := hex.DecodeString(signKeyStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode signing key: %w", err)
+	}
+
+	seeder := seed.New(
+		nil, // userStore not needed for authz
+		s.roleStore,
+		s.grantStore,
+		&seed.Config{
+			EncryptionKey: encKey,
+			SigningKey:    signKey,
+		},
+		logger,
+	)
+
+	s.bootstrapService = NewBootstrapService(s.roleStore, s.grantStore, seeder, cfg, logger)
+
 	s.authzHandler = handler.NewAuthZHandler(s.roleStore, s.grantStore)
 
 	return s, nil
 }
 
-// Start initializes the service.
+// Start initializes the service and runs bootstrap if enabled.
 func (s *Service) Start(ctx context.Context) error {
+	if s.cfg.GetBoolOrDef("auth.enablebootstrap", true) {
+		if err := s.bootstrapService.Bootstrap(ctx); err != nil {
+			return fmt.Errorf("bootstrap failed: %w", err)
+		}
+	}
+
+	s.log.Infof("AuthZ service started successfully")
 	return nil
 }
 
