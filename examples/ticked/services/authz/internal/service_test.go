@@ -16,6 +16,9 @@ func validTestConfig(t *testing.T) *config.Config {
 	clearTestEnvVars(t)
 	os.Setenv("AUTHZ_DATABASE_DRIVER", "fake")
 	os.Setenv("AUTHZ_SERVER_PORT", ":8083")
+	os.Setenv("AUTHZ_CRYPTO_ENCRYPTIONKEY", "5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162")
+	os.Setenv("AUTHZ_CRYPTO_SIGNINGKEY", "d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32")
+	os.Setenv("AUTHZ_AUTH_ENABLEBOOTSTRAP", "false")
 
 	logger := log.NewLogger("info")
 	cfg, err := config.New(logger,
@@ -35,6 +38,9 @@ func clearTestEnvVars(t *testing.T) {
 		"AUTHZ_DATABASE_DRIVER",
 		"AUTHZ_DATABASE_HOST",
 		"AUTHZ_DATABASE_DATABASE",
+		"AUTHZ_CRYPTO_ENCRYPTIONKEY",
+		"AUTHZ_CRYPTO_SIGNINGKEY",
+		"AUTHZ_AUTH_ENABLEBOOTSTRAP",
 	}
 
 	for _, v := range envVars {
@@ -62,6 +68,9 @@ func TestNew(t *testing.T) {
 				os.Setenv("AUTHZ_DATABASE_DRIVER", "postgres")
 				os.Setenv("AUTHZ_DATABASE_HOST", "localhost")
 				os.Setenv("AUTHZ_DATABASE_DATABASE", "test")
+				os.Setenv("AUTHZ_CRYPTO_ENCRYPTIONKEY", "5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162")
+				os.Setenv("AUTHZ_CRYPTO_SIGNINGKEY", "d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32")
+				os.Setenv("AUTHZ_AUTH_ENABLEBOOTSTRAP", "false")
 
 				logger := log.NewLogger("info")
 				cfg, err := config.New(logger,
@@ -79,7 +88,8 @@ func TestNew(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := tt.setup(t)
-			svc, err := New(cfg)
+			logger := log.NewLogger("info")
+			svc, err := New(cfg, logger)
 
 			if cfg.Database.Driver == "postgres" && err != nil {
 				t.Skip("skipping postgres test: database not available")
@@ -118,6 +128,10 @@ func TestNew(t *testing.T) {
 				t.Error("authzHandler is nil")
 			}
 
+			if svc.bootstrapService == nil {
+				t.Error("bootstrapService is nil")
+			}
+
 			// Clean up if postgres
 			if svc.db != nil {
 				svc.db.Close()
@@ -127,11 +141,12 @@ func TestNew(t *testing.T) {
 }
 
 func TestStartStop(t *testing.T) {
-	cfg := validTestConfig(t)
-
 	clearTestEnvVars(t)
 	os.Setenv("AUTHZ_DATABASE_DRIVER", "fake")
 	os.Setenv("AUTHZ_SERVER_PORT", ":0")
+	os.Setenv("AUTHZ_CRYPTO_ENCRYPTIONKEY", "5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162")
+	os.Setenv("AUTHZ_CRYPTO_SIGNINGKEY", "d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32")
+	os.Setenv("AUTHZ_AUTH_ENABLEBOOTSTRAP", "false")
 
 	logger := log.NewLogger("info")
 	cfg, err := config.New(logger,
@@ -141,7 +156,7 @@ func TestStartStop(t *testing.T) {
 		t.Fatalf("config.New() error: %v", err)
 	}
 
-	svc, err := New(cfg)
+	svc, err := New(cfg, logger)
 	if err != nil {
 		t.Fatalf("New() error: %v", err)
 	}
@@ -162,7 +177,8 @@ func TestStartStop(t *testing.T) {
 func TestRegisterRoutes(t *testing.T) {
 	cfg := validTestConfig(t)
 
-	svc, err := New(cfg)
+	logger := log.NewLogger("info")
+	svc, err := New(cfg, logger)
 	if err != nil {
 		t.Fatalf("New() error: %v", err)
 	}
