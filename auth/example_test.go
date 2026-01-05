@@ -12,17 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// noopLogger is a no-op implementation of logger.Logger for examples
-type noopLogger struct{}
-
-func (l *noopLogger) Debug(v ...interface{})                      {}
-func (l *noopLogger) Debugf(format string, args ...interface{})   {}
-func (l *noopLogger) Info(v ...interface{})                       {}
-func (l *noopLogger) Infof(format string, args ...interface{})    {}
-func (l *noopLogger) Error(v ...interface{})                      {}
-func (l *noopLogger) Errorf(format string, args ...interface{})   {}
-func (l *noopLogger) With(args ...interface{}) logger.Logger { return l }
-
 // Example of manual wiring with fake implementations
 func Example_manualWiring() {
 	ctx := context.Background()
@@ -71,8 +60,7 @@ func Example_seedPackage() {
 		EncryptionKey: []byte("12345678901234567890123456789012"),
 		SigningKey:    []byte("12345678901234567890123456789012"),
 	}
-	// For examples, we can use a no-op logger
-	seeder := seed.New(userStore, roleStore, grantStore, cfg, &noopLogger{})
+	seeder := seed.New(userStore, roleStore, grantStore, cfg, log.NewNoopLogger())
 
 	// Seed an admin role
 	role, _ := seeder.SeedRole(ctx, seed.RoleInput{
