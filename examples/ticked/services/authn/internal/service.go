@@ -6,8 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"net/http"
-	"time"
 
 	"github.com/aquamarinepk/aqm/auth"
 	"github.com/aquamarinepk/aqm/auth/handler"
@@ -17,11 +15,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-// Service coordinates the authn service components and manages the HTTP server lifecycle.
+// Service coordinates the authn service components and manages lifecycle.
 type Service struct {
-	cfg    *config.Config
-	db     *sql.DB
-	server *http.Server
+	cfg *config.Config
+	db  *sql.DB
 
 	// Stores
 	userStore  auth.UserStore
@@ -108,8 +105,7 @@ func New(cfg *config.Config) (*Service, error) {
 	return s, nil
 }
 
-// Start initializes the HTTP server, optionally bootstraps the superadmin user,
-// and starts listening for requests. This method blocks until the server is shutdown.
+// Start initializes the service and optionally bootstraps the superadmin user.
 func (s *Service) Start(ctx context.Context) error {
 	// Bootstrap superadmin if enabled
 	if s.cfg.IsBootstrapEnabled() {
@@ -118,53 +114,32 @@ func (s *Service) Start(ctx context.Context) error {
 		}
 	}
 
-	// Create router
-	r := chi.NewRouter()
+	log.Println("Service started successfully")
+	return nil
+}
 
+// RegisterRoutes registers all HTTP routes for the service.
+func (s *Service) RegisterRoutes(r chi.Router) {
 	// Add middleware
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	// Register routes
+	// Register handler routes
 	s.authnHandler.RegisterRoutes(r)
 	s.authzHandler.RegisterRoutes(r)
-
-	// Create HTTP server
-	s.server = &http.Server{
-		Addr:         s.cfg.Server.Port,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-
-	log.Printf("Starting server on %s", s.cfg.Server.Port)
-
-	// Start server
-	if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return fmt.Errorf("server error: %w", err)
-	}
-
-	return nil
 }
 
-// Stop gracefully shuts down the HTTP server and closes database connections.
-// It waits for active connections to finish within the context deadline.
+// Stop gracefully shuts down the service and closes database connections.
 func (s *Service) Stop(ctx context.Context) error {
-	if s.server != nil {
-		if err := s.server.Shutdown(ctx); err != nil {
-			return fmt.Errorf("server shutdown error: %w", err)
-		}
-	}
-
 	if s.db != nil {
 		if err := s.db.Close(); err != nil {
 			return fmt.Errorf("database close error: %w", err)
 		}
 	}
 
+	log.Println("Service stopped successfully")
 	return nil
 }
 

@@ -2,72 +2,84 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
+	"github.com/aquamarinepk/aqm/app"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/config"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/internal"
-	log "github.com/aquamarinepk/aqm/log"
+	logger "github.com/aquamarinepk/aqm/log"
+)
+
+const (
+	name    = "authn"
+	version = "0.1.0"
 )
 
 func main() {
 	// Create logger
-	logger := log.NewLogger("info")
+	log := logger.NewLogger("info")
 
 	// Load configuration
-	logger.Info("Loading configuration...")
-	cfg, err := config.New(logger)
+	cfg, err := config.New(log)
 	if err != nil {
-		logger.Errorf("Failed to load config: %v", err)
+		log.Errorf("Cannot load config: %v", err)
 		os.Exit(1)
 	}
 
-	// Create service
-	logger.Info("Creating service...")
-	svc, err := internal.New(cfg)
-	if err != nil {
-		logger.Errorf("Failed to create service: %v", err)
-		os.Exit(1)
-	}
-
-	// Setup graceful shutdown
+	// Create context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Listen for shutdown signals
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	// Create router
+	router := app.NewRouter(log, app.WithPing(), app.WithDebugRoutes())
 
-	// Start service in background
-	errCh := make(chan error, 1)
-	go func() {
-		if err := svc.Start(ctx); err != nil {
-			errCh <- err
-		}
-	}()
+	// Build dependencies
+	var deps []any
 
-	logger.Info("Service started. Press Ctrl+C to stop.")
-	logger.Infof("API available at http://localhost%s", cfg.Server.Port)
-
-	// Wait for shutdown signal or error
-	select {
-	case sig := <-sigCh:
-		logger.Infof("Received signal: %v", sig)
-	case err := <-errCh:
-		logger.Errorf("Service error: %v", err)
-	}
-
-	// Graceful shutdown
-	logger.Info("Shutting down...")
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownCancel()
-
-	if err := svc.Stop(shutdownCtx); err != nil {
-		logger.Errorf("Shutdown error: %v", err)
+	svc, err := internal.New(cfg)
+	if err != nil {
+		log.Errorf("Cannot create service: %v", err)
 		os.Exit(1)
 	}
 
-	logger.Info("Service stopped")
+	deps = append(deps, svc)
+
+	// Setup lifecycle
+	starts, stops, registrars := app.Setup(ctx, router, deps...)
+
+	// Start components
+	if err := app.Start(ctx, log, starts, stops, registrars, router); err != nil {
+		log.Errorf("Cannot start %s(%s): %v", name, version, err)
+		os.Exit(1)
+	}
+
+	log.Infof("%s(%s) started successfully", name, version)
+
+	// Start HTTP server in background
+	go func() {
+		log.Infof("Server listening on %s", cfg.Server.Port)
+		if err := app.Serve(router, cfg.Server.Port); err != nil {
+			log.Errorf("Server error: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	<-stop
+
+	// Graceful shutdown
+	log.Infof("Shutting down %s(%s)...", name, version)
+	cancel()
+
+	for i := len(stops) - 1; i >= 0; i-- {
+		if err := stops[i](context.Background()); err != nil {
+			log.Errorf("Error stopping component: %v", err)
+		}
+	}
+
+	fmt.Println("Goodbye!")
 }
