@@ -1,0 +1,17 @@
+server:
+  port: ":8084"
+
+database:
+  driver: fake
+
+log:
+  level: debug
+
+services:
+  authn:
+    url: "http://localhost:8082"
+  authz:
+    url: "http://localhost:8083"
+
+preflight:
+  enabled: true
