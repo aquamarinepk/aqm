@@ -10,9 +10,6 @@ auth:
     name: "ticked_session"
     ttl: "24h"
 
-preflight:
-  enabled: true
-
 log:
   level: "info"
   format: "text"

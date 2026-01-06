@@ -2,11 +2,9 @@ package internal
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aquamarinepk/aqm/config"
 	"github.com/aquamarinepk/aqm/log"
-	"github.com/aquamarinepk/aqm/preflight"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -37,19 +35,8 @@ func New(cfg *config.Config, log log.Logger) (*Service, error) {
 	return s, nil
 }
 
-// Start initializes the service and runs preflight checks.
+// Start initializes the service.
 func (s *Service) Start(ctx context.Context) error {
-	if s.cfg.GetBoolOrDef("preflight.enabled", true) {
-		checker := preflight.New(s.log)
-
-		tickedURL := s.cfg.GetStringOrDef("services.ticked.url", "http://localhost:8084")
-		checker.Add(preflight.HTTPCheck("ticked-api", tickedURL+"/health"))
-
-		if err := checker.RunAll(ctx); err != nil {
-			return fmt.Errorf("preflight checks failed: %w", err)
-		}
-	}
-
 	s.log.Info("Service started successfully")
 	return nil
 }

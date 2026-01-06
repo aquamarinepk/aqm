@@ -129,7 +129,6 @@ run: build
 		export WEB_SERVER_PORT=:8080 && \
 		export WEB_SERVICES_TICKED_URL=http://localhost:8084 && \
 		export WEB_AUTH_SESSION_TTL=24h && \
-		export WEB_PREFLIGHT_ENABLED=true && \
 		nohup ./web > web.log 2>&1 & echo $$! > web.pid; \
 		sleep 2
 	@echo ""
@@ -186,7 +185,6 @@ run-fake: build
 		export WEB_SERVER_PORT=:8080 && \
 		export WEB_SERVICES_TICKED_URL=http://localhost:8084 && \
 		export WEB_AUTH_SESSION_TTL=24h && \
-		export WEB_PREFLIGHT_ENABLED=true && \
 		nohup ./web > web.log 2>&1 & echo $$! > web.pid; \
 		sleep 2
 	@echo ""
