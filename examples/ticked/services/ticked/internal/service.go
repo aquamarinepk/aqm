@@ -8,7 +8,6 @@ import (
 	"github.com/aquamarinepk/aqm/config"
 	aqmlog "github.com/aquamarinepk/aqm/log"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/ticked/internal/list"
-	"github.com/aquamarinepk/aqm/examples/ticked/services/ticked/internal/list/fake"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/lib/pq"
 )
@@ -46,7 +45,7 @@ func New(cfg *config.Config, log aqmlog.Logger) (*Service, error) {
 		s.db = db
 		repo = list.NewPostgresRepo(db)
 	} else {
-		repo = &fake.Repo{}
+		repo = list.NewMemoryRepo()
 	}
 
 	// Initialize service and handler
