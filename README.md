@@ -8,8 +8,6 @@
 
 Idiomatic Go primitives library for microservice orchestration in monorepo-based systems.
 
-**aquamarine** (`aqm`) is the core primitives library from the Aquamarine organization, providing foundational building blocks for Go microservices.
-
 ## What is aquamarine?
 
 aquamarine is a collection of small, composable Go packages that handle common cross-cutting concerns in microservice architectures: configuration, logging, telemetry, health checks, metrics, and persistence patterns.
