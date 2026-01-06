@@ -9,6 +9,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// ServiceInterface defines the business logic operations for todo lists.
+type ServiceInterface interface {
+	GetOrCreateList(ctx context.Context, userID uuid.UUID) (*TodoList, error)
+	GetList(ctx context.Context, userID uuid.UUID) (*TodoList, error)
+	AddItem(ctx context.Context, userID uuid.UUID, text string) (*TodoList, error)
+	UpdateItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, text *string, completed *bool) (*TodoList, error)
+	RemoveItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*TodoList, error)
+}
+
 // Service contains business logic for todo lists.
 type Service struct {
 	repo Repo

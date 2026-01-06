@@ -572,3 +572,18 @@ func TestServiceRemoveItem(t *testing.T) {
 	}
 }
 
+
+func TestNoopLogger(t *testing.T) {
+	l := &noopLogger{}
+	l.Debug("test")
+	l.Debugf("test %s", "arg")
+	l.Info("test")
+	l.Infof("test %s", "arg")
+	l.Error("test")
+	l.Errorf("test %s", "arg")
+
+	withLogger := l.With("key", "value")
+	if withLogger == nil {
+		t.Error("With() should return logger")
+	}
+}
