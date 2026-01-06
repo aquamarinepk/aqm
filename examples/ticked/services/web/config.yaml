@@ -1,0 +1,18 @@
+server:
+  port: ":8080"
+
+services:
+  ticked:
+    url: "http://localhost:8084"
+
+auth:
+  session:
+    name: "ticked_session"
+    ttl: "24h"
+
+preflight:
+  enabled: true
+
+log:
+  level: "info"
+  format: "text"

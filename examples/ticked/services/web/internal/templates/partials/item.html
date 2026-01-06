@@ -1,0 +1,16 @@
+<div class="item {{if .Completed}}item-completed{{end}}" id="item-{{.ID}}">
+    <button class="item-checkbox"
+            hx-post="/list/items/{{.ID}}/toggle"
+            hx-target="#item-{{.ID}}"
+            hx-swap="outerHTML">
+        {{if .Completed}}✓{{else}}○{{end}}
+    </button>
+    <span class="item-text">{{.Text}}</span>
+    <button class="item-delete"
+            hx-delete="/list/items/{{.ID}}"
+            hx-target="#item-{{.ID}}"
+            hx-swap="outerHTML swap:1s"
+            hx-confirm="Delete this item?">
+        🗑️
+    </button>
+</div>

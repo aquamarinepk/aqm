@@ -1,8 +1,8 @@
 # Makefile for Ticked example (aqm microservices orchestration)
 
 # Variables
-SERVICES=authn authz admin ticked
-SERVICE_PORTS=8082 8083 8081 8084
+SERVICES=web admin authn authz ticked
+SERVICE_PORTS=8080 8081 8082 8083 8084
 LOG_LINES?=100
 
 # Database configuration
@@ -64,6 +64,9 @@ build-admin:
 build-ticked:
 	@cd services/ticked && go build -o ticked . && echo "✅ Ticked built"
 
+build-web:
+	@cd services/web && go build -o web . && echo "✅ Web built"
+
 # Run all services
 run: build
 	@echo "🚀 Starting Ticked services..."
@@ -121,6 +124,14 @@ run: build
 		export TICKED_SERVER_PORT=:8084 && \
 		nohup ./ticked > ticked.log 2>&1 & echo $$! > ticked.pid; \
 		sleep 2
+	@echo "   📦 Starting Web on :8080..."
+	@cd services/web && \
+		export WEB_SERVER_PORT=:8080 && \
+		export WEB_SERVICES_TICKED_URL=http://localhost:8084 && \
+		export WEB_AUTH_SESSION_TTL=24h && \
+		export WEB_PREFLIGHT_ENABLED=true && \
+		nohup ./web > web.log 2>&1 & echo $$! > web.pid; \
+		sleep 2
 	@echo ""
 	@echo "🎉 All services started!"
 	@echo "📡 Services running:"
@@ -128,6 +139,7 @@ run: build
 	@echo "   • AuthZ: http://localhost:8083 (authorization)"
 	@echo "   • Admin: http://localhost:8081 (admin interface)"
 	@echo "   • Ticked: http://localhost:8084 (todo lists)"
+	@echo "   • Web: http://localhost:8080 (web interface)"
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
@@ -169,6 +181,14 @@ run-fake: build
 		export TICKED_SERVER_PORT=:8084 && \
 		nohup ./ticked > ticked.log 2>&1 & echo $$! > ticked.pid; \
 		sleep 2
+	@echo "   📦 Starting Web on :8080..."
+	@cd services/web && \
+		export WEB_SERVER_PORT=:8080 && \
+		export WEB_SERVICES_TICKED_URL=http://localhost:8084 && \
+		export WEB_AUTH_SESSION_TTL=24h && \
+		export WEB_PREFLIGHT_ENABLED=true && \
+		nohup ./web > web.log 2>&1 & echo $$! > web.pid; \
+		sleep 2
 	@echo ""
 	@echo "🎉 All services started!"
 	@echo "📡 Services running:"
@@ -176,6 +196,7 @@ run-fake: build
 	@echo "   • AuthZ: http://localhost:8083 (authorization)"
 	@echo "   • Admin: http://localhost:8081 (admin interface)"
 	@echo "   • Ticked: http://localhost:8084 (todo lists)"
+	@echo "   • Web: http://localhost:8080 (web interface)"
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/ticked.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="signin-card">
+            <h1>Sign In to Ticked</h1>
+
+            <div class="note">
+                <p><strong>Development Mode</strong></p>
+                <p>This is a work-in-progress authentication interface. Use these credentials to explore the application:</p>
+                <p>Email: <code>john.doe@localhost</code> • Password: <code>johndoe</code></p>
+            </div>
+
+            {{if .Error}}
+            <div class="error">{{.Error}}</div>
+            {{end}}
+
+            <form hx-post="/signin" hx-target="body" hx-swap="innerHTML">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="text" id="email" name="email" value="john.doe@localhost" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" value="johndoe" required>
+                </div>
+
+                <button type="submit" class="btn-primary">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <button type="button" id="theme-toggle" title="Toggle theme (alt+d)">🌙</button>
+    <script src="/static/ticked.js"></script>
+</body>
+</html>
