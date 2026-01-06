@@ -1,0 +1,15 @@
+server:
+  port: ":8084"
+
+database:
+  driver: "fake"
+  host: "localhost"
+  port: 5432
+  user: "ticked"
+  password: "ticked"
+  database: "ticked"
+  sslmode: "disable"
+
+log:
+  level: "info"
+  format: "text"

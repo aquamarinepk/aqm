@@ -1,8 +1,8 @@
 # Makefile for Ticked example (aqm microservices orchestration)
 
 # Variables
-SERVICES=authn authz admin
-SERVICE_PORTS=8082 8083 8081
+SERVICES=authn authz admin ticked
+SERVICE_PORTS=8082 8083 8081 8084
 LOG_LINES?=100
 
 # Database configuration
@@ -13,6 +13,7 @@ DB_PASS?=dev
 DB_AUTHN?=authn
 DB_AUTHZ?=authz
 DB_ADMIN?=admin
+DB_TICKED?=ticked
 
 # Phony targets
 .PHONY: help build run run-fake stop logs logs-clear fresh test test-all clean db-init db-drop db-reset
@@ -60,6 +61,9 @@ build-authz:
 build-admin:
 	@cd services/admin && go build -o admin . && echo "✅ Admin built"
 
+build-ticked:
+	@cd services/ticked && go build -o ticked . && echo "✅ Ticked built"
+
 # Run all services
 run: build
 	@echo "🚀 Starting Ticked services..."
@@ -106,12 +110,24 @@ run: build
 		export ADMIN_PREFLIGHT_ENABLED=true && \
 		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
 		sleep 2
+	@echo "   📦 Starting Ticked on :8084..."
+	@cd services/ticked && \
+		export TICKED_DATABASE_DRIVER=postgres && \
+		export TICKED_DATABASE_HOST=$(DB_HOST) && \
+		export TICKED_DATABASE_PORT=$(DB_PORT) && \
+		export TICKED_DATABASE_USER=$(DB_USER) && \
+		export TICKED_DATABASE_PASSWORD=$(DB_PASS) && \
+		export TICKED_DATABASE_NAME=$(DB_TICKED) && \
+		export TICKED_SERVER_PORT=:8084 && \
+		nohup ./ticked > ticked.log 2>&1 & echo $$! > ticked.pid; \
+		sleep 2
 	@echo ""
 	@echo "🎉 All services started!"
 	@echo "📡 Services running:"
 	@echo "   • AuthN: http://localhost:8082 (authentication)"
 	@echo "   • AuthZ: http://localhost:8083 (authorization)"
 	@echo "   • Admin: http://localhost:8081 (admin interface)"
+	@echo "   • Ticked: http://localhost:8084 (todo lists)"
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
@@ -147,12 +163,19 @@ run-fake: build
 		export ADMIN_PREFLIGHT_ENABLED=true && \
 		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
 		sleep 2
+	@echo "   📦 Starting Ticked on :8084..."
+	@cd services/ticked && \
+		export TICKED_DATABASE_DRIVER=fake && \
+		export TICKED_SERVER_PORT=:8084 && \
+		nohup ./ticked > ticked.log 2>&1 & echo $$! > ticked.pid; \
+		sleep 2
 	@echo ""
 	@echo "🎉 All services started!"
 	@echo "📡 Services running:"
 	@echo "   • AuthN: http://localhost:8082 (authentication)"
 	@echo "   • AuthZ: http://localhost:8083 (authorization)"
 	@echo "   • Admin: http://localhost:8081 (admin interface)"
+	@echo "   • Ticked: http://localhost:8084 (todo lists)"
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
@@ -184,7 +207,7 @@ logs:
 	@echo "📜 Streaming logs from all services (last $(LOG_LINES) lines)..."
 	@echo "   Press Ctrl+C to stop"
 	@echo ""
-	@tail -n $(LOG_LINES) -F services/authn/authn.log services/authz/authz.log services/admin/admin.log 2>/dev/null | \
+	@tail -n $(LOG_LINES) -F services/authn/authn.log services/authz/authz.log services/admin/admin.log services/ticked/ticked.log 2>/dev/null | \
 		awk '/^==> / { service=$$2; gsub(/^services\/|\/.*\.log/, "", service); next } \
 		     { printf "\033[1;36m[%s]\033[0m %s\n", service, $$0; fflush(); }' || \
 		echo "⚠️  No log files found. Start services with 'make run'"
@@ -240,6 +263,9 @@ test-authz:
 test-admin:
 	@cd services/admin && go test ./...
 
+test-ticked:
+	@cd services/ticked && go test ./...
+
 # Clean all generated files
 clean:
 	@echo "🧹 Cleaning up..."
@@ -260,6 +286,8 @@ db-init:
 	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_AUTHZ);" 2>/dev/null || echo "   ⚠️  $(DB_AUTHZ) already exists"
 	@echo "   📦 Creating $(DB_ADMIN)..."
 	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_ADMIN);" 2>/dev/null || echo "   ⚠️  $(DB_ADMIN) already exists"
+	@echo "   📦 Creating $(DB_TICKED)..."
+	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_TICKED);" 2>/dev/null || echo "   ⚠️  $(DB_TICKED) already exists"
 	@echo "✅ Databases ready"
 
 db-drop:
@@ -271,6 +299,8 @@ db-drop:
 	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "DROP DATABASE IF EXISTS $(DB_AUTHZ);" 2>/dev/null
 	@echo "   🗑️  Dropping $(DB_ADMIN)..."
 	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "DROP DATABASE IF EXISTS $(DB_ADMIN);" 2>/dev/null
+	@echo "   🗑️  Dropping $(DB_TICKED)..."
+	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "DROP DATABASE IF EXISTS $(DB_TICKED);" 2>/dev/null
 	@echo "✅ Databases dropped"
 
 db-reset: db-drop db-init
