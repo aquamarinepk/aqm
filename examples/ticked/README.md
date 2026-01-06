@@ -6,7 +6,7 @@ Complete microservices setup demonstrating aqm framework with authentication, au
 
 - **AuthN** (port 8082): Authentication service with user management
 - **AuthZ** (port 8083): Authorization service with roles and grants
-- **Admin** (port 8084): Web admin interface for managing users and roles
+- **Admin** (port 8081): Web admin interface for managing users and roles
 
 ## Prerequisites
 
@@ -46,7 +46,7 @@ make run
 Services will start on:
 - AuthN: http://localhost:8082
 - AuthZ: http://localhost:8083
-- Admin: http://localhost:8084
+- Admin: http://localhost:8081
 
 ### 4. View logs
 
@@ -114,7 +114,7 @@ make run DB_HOST=127.0.0.1 DB_USER=myuser DB_PASS=mypass
 
 ## Admin Interface
 
-Access the admin interface at http://localhost:8084
+Access the admin interface at http://localhost:8081
 
 Features:
 - View all users
@@ -132,7 +132,7 @@ Features:
 - `GET /health` - Health check
 - `GET /grants/user/{id}` - Get user roles
 
-### Admin (8084)
+### Admin (8081)
 - `GET /admin` - Dashboard
 - `GET /admin/list-users` - Users list
 - `GET /admin/get-user?id={uuid}` - User details
@@ -169,7 +169,7 @@ This will:
 ### Services won't start
 ```bash
 # Check if ports are in use
-lsof -ti:8082 -ti:8083 -ti:8084
+lsof -ti:8082 -ti:8083 -ti:8081
 
 # Force stop
 make stop

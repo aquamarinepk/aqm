@@ -17,7 +17,7 @@ func validTestConfig(t *testing.T) *config.Config {
 
 	clearTestEnvVars(t)
 	os.Setenv("ADMIN_DATABASE_DRIVER", "fake")
-	os.Setenv("ADMIN_SERVER_PORT", ":8084")
+	os.Setenv("ADMIN_SERVER_PORT", ":8081")
 	os.Setenv("ADMIN_SERVICES_AUTHN_URL", "http://localhost:8082")
 	os.Setenv("ADMIN_SERVICES_AUTHZ_URL", "http://localhost:8083")
 	os.Setenv("ADMIN_PREFLIGHT_ENABLED", "false")
@@ -146,7 +146,7 @@ func TestStartWithPreflight(t *testing.T) {
 
 	clearTestEnvVars(t)
 	os.Setenv("ADMIN_DATABASE_DRIVER", "fake")
-	os.Setenv("ADMIN_SERVER_PORT", ":8084")
+	os.Setenv("ADMIN_SERVER_PORT", ":8081")
 	os.Setenv("ADMIN_SERVICES_AUTHN_URL", authnServer.URL)
 	os.Setenv("ADMIN_SERVICES_AUTHZ_URL", authzServer.URL)
 	os.Setenv("ADMIN_PREFLIGHT_ENABLED", "true")
@@ -171,7 +171,7 @@ func TestStartWithPreflight(t *testing.T) {
 func TestStartWithPreflightFailure(t *testing.T) {
 	clearTestEnvVars(t)
 	os.Setenv("ADMIN_DATABASE_DRIVER", "fake")
-	os.Setenv("ADMIN_SERVER_PORT", ":8084")
+	os.Setenv("ADMIN_SERVER_PORT", ":8081")
 	os.Setenv("ADMIN_SERVICES_AUTHN_URL", "http://localhost:9999")
 	os.Setenv("ADMIN_SERVICES_AUTHZ_URL", "http://localhost:9998")
 	os.Setenv("ADMIN_PREFLIGHT_ENABLED", "true")

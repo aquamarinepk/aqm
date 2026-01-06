@@ -2,7 +2,7 @@
 
 # Variables
 SERVICES=authn authz admin
-SERVICE_PORTS=8082 8083 8084
+SERVICE_PORTS=8082 8083 8081
 LOG_LINES?=100
 
 # Database configuration
@@ -92,7 +92,7 @@ run: build
 		export AUTHZ_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
 		nohup ./authz > authz.log 2>&1 & echo $$! > authz.pid; \
 		sleep 2
-	@echo "   📦 Starting Admin on :8084..."
+	@echo "   📦 Starting Admin on :8081..."
 	@cd services/admin && \
 		export ADMIN_DATABASE_DRIVER=postgres && \
 		export ADMIN_DATABASE_HOST=$(DB_HOST) && \
@@ -100,7 +100,7 @@ run: build
 		export ADMIN_DATABASE_USER=$(DB_USER) && \
 		export ADMIN_DATABASE_PASSWORD=$(DB_PASS) && \
 		export ADMIN_DATABASE_NAME=$(DB_ADMIN) && \
-		export ADMIN_SERVER_PORT=:8084 && \
+		export ADMIN_SERVER_PORT=:8081 && \
 		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8082 && \
 		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
 		export ADMIN_PREFLIGHT_ENABLED=true && \
@@ -111,7 +111,7 @@ run: build
 	@echo "📡 Services running:"
 	@echo "   • AuthN: http://localhost:8082 (authentication)"
 	@echo "   • AuthZ: http://localhost:8083 (authorization)"
-	@echo "   • Admin: http://localhost:8084 (admin interface)"
+	@echo "   • Admin: http://localhost:8081 (admin interface)"
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
@@ -138,10 +138,10 @@ run-fake: build
 		export AUTHZ_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
 		nohup ./authz > authz.log 2>&1 & echo $$! > authz.pid; \
 		sleep 2
-	@echo "   📦 Starting Admin on :8084..."
+	@echo "   📦 Starting Admin on :8081..."
 	@cd services/admin && \
 		export ADMIN_DATABASE_DRIVER=fake && \
-		export ADMIN_SERVER_PORT=:8084 && \
+		export ADMIN_SERVER_PORT=:8081 && \
 		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8082 && \
 		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
 		export ADMIN_PREFLIGHT_ENABLED=true && \
@@ -152,7 +152,7 @@ run-fake: build
 	@echo "📡 Services running:"
 	@echo "   • AuthN: http://localhost:8082 (authentication)"
 	@echo "   • AuthZ: http://localhost:8083 (authorization)"
-	@echo "   • Admin: http://localhost:8084 (admin interface)"
+	@echo "   • Admin: http://localhost:8081 (admin interface)"
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
