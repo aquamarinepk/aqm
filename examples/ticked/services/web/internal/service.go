@@ -26,15 +26,12 @@ func New(cfg *config.Config, log log.Logger) (*Service, error) {
 		log: log,
 	}
 
-	// Create HTTP-backed todo store
 	tickedURL := cfg.GetStringOrDef("services.ticked.url", "http://localhost:8084")
 	s.todoStore = NewHTTPTodoListStore(tickedURL, log)
 
-	// Create session store
-	sessionTTL := cfg.GetDurationOrDef("auth.session.ttl", 24*3600*1000000000) // 24 hours in nanoseconds
+	sessionTTL := cfg.GetDurationOrDef("auth.session.ttl", 24*3600*1000000000)
 	s.sessionStore = NewSessionStore(sessionTTL)
 
-	// Create handler
 	s.handler = NewHandler(s.todoStore, s.sessionStore, cfg, log)
 
 	return s, nil
@@ -42,11 +39,9 @@ func New(cfg *config.Config, log log.Logger) (*Service, error) {
 
 // Start initializes the service and runs preflight checks.
 func (s *Service) Start(ctx context.Context) error {
-	// Preflight checks
 	if s.cfg.GetBoolOrDef("preflight.enabled", true) {
 		checker := preflight.New(s.log)
 
-		// Check ticked API availability
 		tickedURL := s.cfg.GetStringOrDef("services.ticked.url", "http://localhost:8084")
 		checker.Add(preflight.HTTPCheck("ticked-api", tickedURL+"/health"))
 

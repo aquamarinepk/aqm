@@ -23,7 +23,6 @@ type Handler struct {
 
 // NewHandler creates a new handler instance.
 func NewHandler(todoStore TodoListStore, sessionStore *SessionStore, cfg *config.Config, log log.Logger) *Handler {
-	// Load templates with fallback paths
 	tmpl, err := template.ParseGlob("templates/*.html")
 	if err != nil {
 		tmpl, err = template.ParseGlob("internal/templates/*.html")
@@ -33,7 +32,6 @@ func NewHandler(todoStore TodoListStore, sessionStore *SessionStore, cfg *config
 		}
 	}
 
-	// Load partials
 	if partials, err := template.ParseGlob("templates/partials/*.html"); err == nil {
 		for _, t := range partials.Templates() {
 			tmpl.AddParseTree(t.Name(), t.Tree)
@@ -55,15 +53,12 @@ func NewHandler(todoStore TodoListStore, sessionStore *SessionStore, cfg *config
 
 // RegisterRoutes registers all HTTP routes.
 func (h *Handler) RegisterRoutes(r chi.Router) {
-	// Static files
 	fileServer := http.FileServer(http.Dir("internal/static"))
 	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
 
-	// Public routes
 	r.Get("/signin", h.ShowSignIn)
 	r.Post("/signin", h.HandleSignIn)
 
-	// Protected routes (with session middleware)
 	r.Group(func(r chi.Router) {
 		r.Use(h.SessionMiddleware)
 
@@ -71,7 +66,6 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/list", h.HandleList)
 		r.Post("/signout", h.HandleSignOut)
 
-		// htmx endpoints (return HTML fragments)
 		r.Post("/list/items", h.HandleAddItem)
 		r.Post("/list/items/{itemID}/toggle", h.HandleToggleItem)
 		r.Delete("/list/items/{itemID}", h.HandleRemoveItem)
@@ -94,7 +88,6 @@ func (h *Handler) SessionMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Inject session into context
 		ctx := context.WithValue(r.Context(), "session", session)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -150,7 +143,6 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 
 	userID := demoUserID
 
-	// Create session
 	session := &Session{
 		ID:        uuid.New().String(),
 		UserID:    userID,
@@ -165,7 +157,6 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set cookie
 	sessionName := h.cfg.GetStringOrDef("auth.session.name", "ticked_session")
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionName,
@@ -177,7 +168,6 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   int(h.sessionStore.ttl.Seconds()),
 	})
 
-	// Redirect with HX-Redirect for htmx
 	w.Header().Set("HX-Redirect", "/list")
 	w.WriteHeader(http.StatusOK)
 }
@@ -190,7 +180,6 @@ func (h *Handler) HandleSignOut(w http.ResponseWriter, r *http.Request) {
 		h.sessionStore.Delete(cookie.Value)
 	}
 
-	// Clear cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionName,
 		Value:    "",
@@ -199,7 +188,6 @@ func (h *Handler) HandleSignOut(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 
-	// Redirect to signin
 	w.Header().Set("HX-Redirect", "/signin")
 	w.WriteHeader(http.StatusOK)
 }
@@ -210,7 +198,6 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 	list, err := h.todoStore.Get(r.Context(), session.UserID)
 	if err != nil {
-		// List not found - show empty state
 		list = &TodoList{Items: []TodoItem{}}
 	}
 
@@ -236,7 +223,6 @@ func (h *Handler) HandleAddItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return just the new item HTML
 	if len(list.Items) > 0 {
 		newItem := list.Items[len(list.Items)-1]
 		if err := h.templates.ExecuteTemplate(w, "item.html", newItem); err != nil {
@@ -255,14 +241,12 @@ func (h *Handler) HandleToggleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get current state
 	list, err := h.todoStore.Get(r.Context(), session.UserID)
 	if err != nil {
 		http.Error(w, "List not found", http.StatusNotFound)
 		return
 	}
 
-	// Find item and toggle
 	var currentCompleted bool
 	found := false
 	for _, item := range list.Items {
@@ -286,7 +270,6 @@ func (h *Handler) HandleToggleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find updated item and return HTML
 	for _, item := range list.Items {
 		if item.ID == itemID {
 			if err := h.templates.ExecuteTemplate(w, "item.html", item); err != nil {

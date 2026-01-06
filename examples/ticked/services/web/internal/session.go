@@ -32,7 +32,6 @@ func NewSessionStore(ttl time.Duration) *SessionStore {
 		ttl:      ttl,
 	}
 
-	// Start cleanup goroutine
 	go store.cleanup()
 
 	return store
@@ -62,7 +61,6 @@ func (s *SessionStore) Get(sessionID string) (*Session, error) {
 		return nil, errors.New("session not found")
 	}
 
-	// Check if expired
 	if time.Now().After(session.ExpiresAt) {
 		return nil, errors.New("session expired")
 	}
