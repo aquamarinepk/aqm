@@ -38,7 +38,7 @@ func TestRepoSave(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &Repo{SaveFunc: tt.saveFunc}
+			repo := &Store{SaveFunc: tt.saveFunc}
 			todoList := list.NewTodoList(uuid.New())
 
 			err := repo.Save(context.Background(), todoList)
@@ -86,7 +86,7 @@ func TestRepoFindByUserID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &Repo{FindByUserIDFunc: tt.findByUserIDFunc}
+			repo := &Store{FindByUserIDFunc: tt.findByUserIDFunc}
 
 			got, err := repo.FindByUserID(context.Background(), userID)
 
@@ -132,7 +132,7 @@ func TestRepoDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &Repo{DeleteFunc: tt.deleteFunc}
+			repo := &Store{DeleteFunc: tt.deleteFunc}
 
 			err := repo.Delete(context.Background(), listID)
 

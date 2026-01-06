@@ -8,28 +8,28 @@ import (
 	"github.com/google/uuid"
 )
 
-// testRepo is a simple fake repository for testing.
-type testRepo struct {
+// testStore is a simple fake repository for testing.
+type testStore struct {
 	saveFunc         func(ctx context.Context, list *TodoList) error
 	findByUserIDFunc func(ctx context.Context, userID uuid.UUID) (*TodoList, error)
 	deleteFunc       func(ctx context.Context, listID uuid.UUID) error
 }
 
-func (r *testRepo) Save(ctx context.Context, list *TodoList) error {
+func (r *testStore) Save(ctx context.Context, list *TodoList) error {
 	if r.saveFunc != nil {
 		return r.saveFunc(ctx, list)
 	}
 	return nil
 }
 
-func (r *testRepo) FindByUserID(ctx context.Context, userID uuid.UUID) (*TodoList, error) {
+func (r *testStore) FindByUserID(ctx context.Context, userID uuid.UUID) (*TodoList, error) {
 	if r.findByUserIDFunc != nil {
 		return r.findByUserIDFunc(ctx, userID)
 	}
 	return nil, ErrNotFound
 }
 
-func (r *testRepo) Delete(ctx context.Context, listID uuid.UUID) error {
+func (r *testStore) Delete(ctx context.Context, listID uuid.UUID) error {
 	if r.deleteFunc != nil {
 		return r.deleteFunc(ctx, listID)
 	}
@@ -37,7 +37,7 @@ func (r *testRepo) Delete(ctx context.Context, listID uuid.UUID) error {
 }
 
 func TestNewService(t *testing.T) {
-	repo := &testRepo{}
+	repo := &testStore{}
 
 	svc := NewService(repo, nil, nil)
 
@@ -45,7 +45,7 @@ func TestNewService(t *testing.T) {
 		t.Fatal("NewService() returned nil")
 	}
 
-	if svc.repo != repo {
+	if svc.store != repo {
 		t.Error("repo not set correctly")
 	}
 
@@ -71,13 +71,13 @@ func TestServiceGetOrCreateList(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		repo     *testRepo
+		repo     *testStore
 		wantErr  bool
 		validate func(*testing.T, *TodoList, error)
 	}{
 		{
 			name: "list exists",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					list := NewTodoList(userID)
 					list.AddItem("Existing item")
@@ -99,7 +99,7 @@ func TestServiceGetOrCreateList(t *testing.T) {
 		},
 		{
 			name: "list not found creates new",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return nil, ErrNotFound
 				},
@@ -125,7 +125,7 @@ func TestServiceGetOrCreateList(t *testing.T) {
 		},
 		{
 			name: "save error on create",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return nil, ErrNotFound
 				},
@@ -145,7 +145,7 @@ func TestServiceGetOrCreateList(t *testing.T) {
 		},
 		{
 			name: "find error",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return nil, errors.New("database error")
 				},
@@ -182,12 +182,12 @@ func TestServiceGetList(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		repo    *testRepo
+		repo    *testStore
 		wantErr error
 	}{
 		{
 			name: "list found",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return NewTodoList(userID), nil
 				},
@@ -196,7 +196,7 @@ func TestServiceGetList(t *testing.T) {
 		},
 		{
 			name: "list not found",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return nil, ErrNotFound
 				},
@@ -232,14 +232,14 @@ func TestServiceAddItem(t *testing.T) {
 	tests := []struct {
 		name     string
 		text     string
-		repo     *testRepo
+		repo     *testStore
 		wantErr  bool
 		validate func(*testing.T, *TodoList, error)
 	}{
 		{
 			name: "add to existing list",
 			text: "New task",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return NewTodoList(userID), nil
 				},
@@ -263,7 +263,7 @@ func TestServiceAddItem(t *testing.T) {
 		{
 			name: "add to new list",
 			text: "First task",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return nil, ErrNotFound
 				},
@@ -284,7 +284,7 @@ func TestServiceAddItem(t *testing.T) {
 		{
 			name: "validation error empty text",
 			text: "",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return NewTodoList(userID), nil
 				},
@@ -299,7 +299,7 @@ func TestServiceAddItem(t *testing.T) {
 		{
 			name: "save error",
 			text: "Task",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return NewTodoList(userID), nil
 				},
@@ -317,7 +317,7 @@ func TestServiceAddItem(t *testing.T) {
 		{
 			name: "find error",
 			text: "Task",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return nil, errors.New("database error")
 				},
@@ -354,14 +354,14 @@ func TestServiceUpdateItem(t *testing.T) {
 		name      string
 		text      *string
 		completed *bool
-		repo      *testRepo
+		repo      *testStore
 		wantErr   bool
 		validate  func(*testing.T, *TodoList, error)
 	}{
 		{
 			name: "update text",
 			text: stringPtr("Updated text"),
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					list := NewTodoList(userID)
 					item := TodoItem{ItemID: itemID, Text: "Original"}
@@ -385,7 +385,7 @@ func TestServiceUpdateItem(t *testing.T) {
 		{
 			name:      "update completed",
 			completed: boolPtr(true),
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					list := NewTodoList(userID)
 					item := TodoItem{ItemID: itemID, Text: "Task", Completed: false}
@@ -409,7 +409,7 @@ func TestServiceUpdateItem(t *testing.T) {
 		{
 			name: "item not found",
 			text: stringPtr("Text"),
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return NewTodoList(userID), nil
 				},
@@ -424,7 +424,7 @@ func TestServiceUpdateItem(t *testing.T) {
 		{
 			name: "list not found",
 			text: stringPtr("Text"),
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return nil, ErrNotFound
 				},
@@ -439,7 +439,7 @@ func TestServiceUpdateItem(t *testing.T) {
 		{
 			name: "save error",
 			text: stringPtr("Text"),
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					list := NewTodoList(userID)
 					item := TodoItem{ItemID: itemID, Text: "Task"}
@@ -480,13 +480,13 @@ func TestServiceRemoveItem(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		repo     *testRepo
+		repo     *testStore
 		wantErr  bool
 		validate func(*testing.T, *TodoList, error)
 	}{
 		{
 			name: "remove existing item",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					list := NewTodoList(userID)
 					item := TodoItem{ItemID: itemID, Text: "Task"}
@@ -509,7 +509,7 @@ func TestServiceRemoveItem(t *testing.T) {
 		},
 		{
 			name: "item not found",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return NewTodoList(userID), nil
 				},
@@ -523,7 +523,7 @@ func TestServiceRemoveItem(t *testing.T) {
 		},
 		{
 			name: "list not found",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					return nil, ErrNotFound
 				},
@@ -537,7 +537,7 @@ func TestServiceRemoveItem(t *testing.T) {
 		},
 		{
 			name: "save error",
-			repo: &testRepo{
+			repo: &testStore{
 				findByUserIDFunc: func(ctx context.Context, uid uuid.UUID) (*TodoList, error) {
 					list := NewTodoList(userID)
 					item := TodoItem{ItemID: itemID, Text: "Task"}

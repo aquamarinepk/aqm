@@ -7,21 +7,26 @@ import (
 	"github.com/google/uuid"
 )
 
-// memoryRepo is an in-memory repository for demo purposes.
-type memoryRepo struct {
+// memStore is an in-memory store for demo and testing purposes.
+//
+// This store is used when running in "fake" mode (no database required).
+// It provides the same TodoListStore interface as postgresStore, making
+// it easy to swap implementations via configuration.
+type memStore struct {
 	mu    sync.RWMutex
 	lists map[uuid.UUID]*TodoList
 }
 
-func NewMemoryRepo() Repo {
-	return &memoryRepo{
+// NewMemStore creates an in-memory TodoListStore.
+func NewMemStore() TodoListStore {
+	return &memStore{
 		lists: make(map[uuid.UUID]*TodoList),
 	}
 }
 
-func (r *memoryRepo) Save(ctx context.Context, list *TodoList) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (s *memStore) Save(ctx context.Context, list *TodoList) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	// Create a copy to avoid external modifications
 	listCopy := *list
@@ -29,15 +34,15 @@ func (r *memoryRepo) Save(ctx context.Context, list *TodoList) error {
 	copy(listsCopy, list.Items)
 	listCopy.Items = listsCopy
 
-	r.lists[list.UserID] = &listCopy
+	s.lists[list.UserID] = &listCopy
 	return nil
 }
 
-func (r *memoryRepo) FindByUserID(ctx context.Context, userID uuid.UUID) (*TodoList, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (s *memStore) FindByUserID(ctx context.Context, userID uuid.UUID) (*TodoList, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	list, ok := r.lists[userID]
+	list, ok := s.lists[userID]
 	if !ok {
 		return nil, ErrNotFound
 	}
@@ -51,16 +56,18 @@ func (r *memoryRepo) FindByUserID(ctx context.Context, userID uuid.UUID) (*TodoL
 	return &listCopy, nil
 }
 
-func (r *memoryRepo) Delete(ctx context.Context, listID uuid.UUID) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (s *memStore) Delete(ctx context.Context, listID uuid.UUID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	for userID, list := range r.lists {
+	for userID, list := range s.lists {
 		if list.ListID == listID {
-			delete(r.lists, userID)
+			delete(s.lists, userID)
 			return nil
 		}
 	}
 
 	return ErrNotFound
 }
+
+var _ TodoListStore = (*memStore)(nil)

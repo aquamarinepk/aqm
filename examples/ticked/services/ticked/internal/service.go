@@ -28,9 +28,9 @@ func New(cfg *config.Config, log aqmlog.Logger) (*Service, error) {
 		log: log,
 	}
 
-	var repo list.Repo
+	var store list.TodoListStore
 
-	// Initialize repository based on driver
+	// Initialize store based on driver
 	if cfg.Database.Driver == "postgres" {
 		connStr := cfg.Database.ConnectionString()
 		db, err := sql.Open("postgres", connStr)
@@ -43,13 +43,13 @@ func New(cfg *config.Config, log aqmlog.Logger) (*Service, error) {
 		}
 
 		s.db = db
-		repo = list.NewPostgresRepo(db)
+		store = list.NewPostgresStore(db)
 	} else {
-		repo = list.NewMemoryRepo()
+		store = list.NewMemStore()
 	}
 
 	// Initialize service and handler
-	listService := list.NewService(repo, cfg, log)
+	listService := list.NewService(store, cfg, log)
 	s.listHandler = list.NewHandler(listService, cfg, log)
 
 	return s, nil

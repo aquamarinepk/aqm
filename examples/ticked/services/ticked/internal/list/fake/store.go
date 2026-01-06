@@ -7,28 +7,28 @@ import (
 	"github.com/google/uuid"
 )
 
-// Repo is a fake repository for testing.
-type Repo struct {
+// Store is a fake repository for testing.
+type Store struct {
 	SaveFunc         func(ctx context.Context, l *list.TodoList) error
 	FindByUserIDFunc func(ctx context.Context, userID uuid.UUID) (*list.TodoList, error)
 	DeleteFunc       func(ctx context.Context, listID uuid.UUID) error
 }
 
-func (r *Repo) Save(ctx context.Context, l *list.TodoList) error {
+func (r *Store) Save(ctx context.Context, l *list.TodoList) error {
 	if r.SaveFunc != nil {
 		return r.SaveFunc(ctx, l)
 	}
 	return nil
 }
 
-func (r *Repo) FindByUserID(ctx context.Context, userID uuid.UUID) (*list.TodoList, error) {
+func (r *Store) FindByUserID(ctx context.Context, userID uuid.UUID) (*list.TodoList, error) {
 	if r.FindByUserIDFunc != nil {
 		return r.FindByUserIDFunc(ctx, userID)
 	}
 	return nil, list.ErrNotFound
 }
 
-func (r *Repo) Delete(ctx context.Context, listID uuid.UUID) error {
+func (r *Store) Delete(ctx context.Context, listID uuid.UUID) error {
 	if r.DeleteFunc != nil {
 		return r.DeleteFunc(ctx, listID)
 	}
