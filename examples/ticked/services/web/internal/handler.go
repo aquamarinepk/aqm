@@ -8,6 +8,8 @@ import (
 
 	"github.com/aquamarinepk/aqm/config"
 	"github.com/aquamarinepk/aqm/log"
+	"github.com/aquamarinepk/aqm/web"
+	"github.com/aquamarinepk/aqm/web/htmx"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -225,17 +227,14 @@ func (h *Handler) HandleAddItem(w http.ResponseWriter, r *http.Request) {
 
 	if len(list.Items) > 0 {
 		newItem := list.Items[len(list.Items)-1]
-		if err := h.templates.ExecuteTemplate(w, "item.html", newItem); err != nil {
-			h.log.Errorf("Failed to render item template: %v", err)
-		}
+		web.RenderPartial(w, h.templates, "item.html", newItem, h.log)
 	}
 }
 
 // HandleToggleItem toggles completion status (htmx endpoint).
 func (h *Handler) HandleToggleItem(w http.ResponseWriter, r *http.Request) {
 	session := GetSession(r)
-	itemIDStr := chi.URLParam(r, "itemID")
-	itemID, err := uuid.Parse(itemIDStr)
+	itemID, err := web.ParseIDParam(r, "itemID")
 	if err != nil {
 		http.Error(w, "Invalid item ID", http.StatusBadRequest)
 		return
@@ -272,9 +271,7 @@ func (h *Handler) HandleToggleItem(w http.ResponseWriter, r *http.Request) {
 
 	for _, item := range list.Items {
 		if item.ID == itemID {
-			if err := h.templates.ExecuteTemplate(w, "item.html", item); err != nil {
-				h.log.Errorf("Failed to render item template: %v", err)
-			}
+			web.RenderPartial(w, h.templates, "item.html", item, h.log)
 			return
 		}
 	}
@@ -283,33 +280,19 @@ func (h *Handler) HandleToggleItem(w http.ResponseWriter, r *http.Request) {
 // HandleRemoveItem removes an item (htmx endpoint).
 func (h *Handler) HandleRemoveItem(w http.ResponseWriter, r *http.Request) {
 	session := GetSession(r)
-	itemIDStr := chi.URLParam(r, "itemID")
-	itemID, err := uuid.Parse(itemIDStr)
+	itemID, err := web.ParseIDParam(r, "itemID")
 	if err != nil {
 		http.Error(w, "Invalid item ID", http.StatusBadRequest)
 		return
 	}
 
 	_, err = h.todoStore.RemoveItem(r.Context(), session.UserID, itemID)
-	if err != nil {
-		h.log.Errorf("Failed to remove item: %v", err)
-		http.Error(w, "Failed to remove item", http.StatusInternalServerError)
-		return
-	}
-
-	// Return empty content - htmx will replace element with nothing (fade out with swap:1s)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(""))
+	htmx.RespondDelete(w, err, h.log)
 }
 
 // renderTemplate renders a template with the given data.
 func (h *Handler) renderTemplate(w http.ResponseWriter, name string, data map[string]interface{}) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		h.log.Errorf("Failed to render template %s: %v", name, err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
+	web.RenderTemplate(w, h.templates, name, data, h.log)
 }
 
 // renderError renders an error message on the signin template.
