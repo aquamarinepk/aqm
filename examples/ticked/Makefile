@@ -127,9 +127,10 @@ run: build
 		export TICKED_SERVER_PORT=:8084 && \
 		nohup ./ticked > ticked.log 2>&1 & echo $$! > ticked.pid; \
 		sleep 2
-	@echo "   📦 Starting Web on :8080..."
+	@echo "   📦 Starting Web on :8082..."
 	@cd services/web && \
-		export WEB_SERVER_PORT=:8080 && \
+		export WEB_SERVER_PORT=:8082 && \
+		export WEB_SERVICES_AUTHN_URL=http://localhost:8080 && \
 		export WEB_SERVICES_TICKED_URL=http://localhost:8084 && \
 		export WEB_AUTH_SESSION_TTL=24h && \
 		nohup ./web > web.log 2>&1 & echo $$! > web.pid; \
@@ -137,11 +138,11 @@ run: build
 	@echo ""
 	@echo "🎉 All services started!"
 	@echo "📡 Services running:"
-	@echo "   • AuthN: http://localhost:8082 (authentication)"
+	@echo "   • AuthN: http://localhost:8080 (authentication)"
 	@echo "   • AuthZ: http://localhost:8083 (authorization)"
 	@echo "   • Admin: http://localhost:8081 (admin interface)"
 	@echo "   • Ticked: http://localhost:8084 (todo lists)"
-	@echo "   • Web: http://localhost:8080 (web interface)"
+	@echo "   • Web: http://localhost:8082 (web interface)"
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
@@ -183,9 +184,10 @@ run-fake: build
 		export TICKED_SERVER_PORT=:8084 && \
 		nohup ./ticked > ticked.log 2>&1 & echo $$! > ticked.pid; \
 		sleep 2
-	@echo "   📦 Starting Web on :8080..."
+	@echo "   📦 Starting Web on :8082..."
 	@cd services/web && \
-		export WEB_SERVER_PORT=:8080 && \
+		export WEB_SERVER_PORT=:8082 && \
+		export WEB_SERVICES_AUTHN_URL=http://localhost:8080 && \
 		export WEB_SERVICES_TICKED_URL=http://localhost:8084 && \
 		export WEB_AUTH_SESSION_TTL=24h && \
 		nohup ./web > web.log 2>&1 & echo $$! > web.pid; \
@@ -193,11 +195,11 @@ run-fake: build
 	@echo ""
 	@echo "🎉 All services started!"
 	@echo "📡 Services running:"
-	@echo "   • AuthN: http://localhost:8082 (authentication)"
+	@echo "   • AuthN: http://localhost:8080 (authentication)"
 	@echo "   • AuthZ: http://localhost:8083 (authorization)"
 	@echo "   • Admin: http://localhost:8081 (admin interface)"
 	@echo "   • Ticked: http://localhost:8084 (todo lists)"
-	@echo "   • Web: http://localhost:8080 (web interface)"
+	@echo "   • Web: http://localhost:8082 (web interface)"
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
