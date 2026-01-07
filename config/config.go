@@ -24,10 +24,17 @@ type Config struct {
 	NATS     NATSConfig     `koanf:"nats"`
 	Assets   AssetsConfig   `koanf:"assets"`
 	Auth     AuthConfig     `koanf:"auth"`
+	AQM      AQMConfig      `koanf:"aqm"`
 
 	// Internal fields (not marshaled by koanf)
 	k      *koanf.Koanf
 	logger log.Logger
+}
+
+// AQMConfig holds framework-level configuration shared across all services.
+// These settings use the AQM_ environment variable prefix.
+type AQMConfig struct {
+	DevMode bool `koanf:"devmode"`
 }
 
 // LogConfig holds logging configuration.
@@ -173,6 +180,7 @@ func New(logger log.Logger, opts ...Option) (*Config, error) {
 		"auth.registration_token_ttl":        "72h",
 		"auth.password_reset_token_ttl":      "1h",
 		"auth.auto_approve_registrations":    false,
+		"aqm.devmode":                        false,
 	}
 
 	// Merge baseline defaults with user-provided defaults
@@ -211,6 +219,14 @@ func New(logger log.Logger, opts ...Option) (*Config, error) {
 		}), nil); err != nil {
 			return nil, fmt.Errorf("failed to load environment variables: %w", err)
 		}
+	}
+
+	// Always load AQM_ prefixed env vars for framework-level config
+	if err := cfg.k.Load(env.Provider("AQM_", ".", func(s string) string {
+		return "aqm." + strings.Replace(strings.ToLower(
+			strings.TrimPrefix(s, "AQM_")), "_", ".", -1)
+	}), nil); err != nil {
+		return nil, fmt.Errorf("failed to load AQM environment variables: %w", err)
 	}
 
 	// Unmarshal to struct

@@ -4,22 +4,24 @@ import (
 	"context"
 	"crypto/ed25519"
 	"database/sql"
+	"embed"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"log"
 
 	"github.com/aquamarinepk/aqm/auth"
 	"github.com/aquamarinepk/aqm/auth/handler"
 	"github.com/aquamarinepk/aqm/auth/service"
 	"github.com/aquamarinepk/aqm/config"
+	"github.com/aquamarinepk/aqm/log"
 	"github.com/go-chi/chi/v5"
 )
 
 // Service coordinates the authn service components and manages lifecycle.
 type Service struct {
-	cfg *config.Config
-	db  *sql.DB
+	cfg    *config.Config
+	logger log.Logger
+	db     *sql.DB
 
 	// Stores
 	userStore  auth.UserStore
@@ -41,15 +43,16 @@ type Service struct {
 // New creates a new Service with the given configuration.
 // It initializes stores (postgres or fake based on config), crypto services,
 // and HTTP handlers. Returns an error if initialization fails.
-func New(cfg *config.Config) (*Service, error) {
+func New(cfg *config.Config, migrationsFS embed.FS, logger log.Logger) (*Service, error) {
 	s := &Service{
-		cfg: cfg,
+		cfg:    cfg,
+		logger: logger,
 	}
 
 	// Initialize stores based on driver
 	if cfg.Database.Driver == "postgres" {
 		connStr := cfg.Database.ConnectionString()
-		userStore, roleStore, grantStore, db, err := NewPostgresStores(connStr)
+		userStore, roleStore, grantStore, db, err := NewPostgresStores(connStr, migrationsFS, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create postgres stores: %w", err)
 		}
@@ -101,7 +104,15 @@ func New(cfg *config.Config) (*Service, error) {
 
 	s.crypto = service.NewDefaultCryptoService(encKey, signKey)
 	s.tokenGen = service.NewDefaultTokenGenerator(ed25519.PrivateKey(tokenKey), tokenTTL)
-	s.pwdGen = service.NewDefaultPasswordGenerator(passwordLength)
+
+	// Check for dev mode - use fixed password generator for easier development
+	if cfg.AQM.DevMode {
+		s.pwdGen = service.NewDevPasswordGenerator("")
+		logger.Info("WARNING: DEV_MODE enabled, using fixed bootstrap password (Superadmin123!)")
+	} else {
+		s.pwdGen = service.NewDefaultPasswordGenerator(passwordLength)
+	}
+
 	s.pinGen = service.NewDefaultPINGenerator()
 
 	// Initialize handlers
@@ -136,7 +147,7 @@ func (s *Service) Start(ctx context.Context) error {
 		}
 	}
 
-	log.Println("Service started successfully")
+	s.logger.Info("Service started successfully")
 	return nil
 }
 
@@ -155,7 +166,7 @@ func (s *Service) Stop(ctx context.Context) error {
 		}
 	}
 
-	log.Println("Service stopped successfully")
+	s.logger.Info("Service stopped successfully")
 	return nil
 }
 
@@ -169,13 +180,13 @@ func (s *Service) bootstrap(ctx context.Context) error {
 
 	// Only log if a new superadmin was created (password is returned)
 	if password != "" {
-		log.Println("============================================")
-		log.Printf("Superadmin created: %s", service.SuperadminEmail)
-		log.Printf("Password: %s", password)
-		log.Println("CHANGE THIS PASSWORD IMMEDIATELY!")
-		log.Println("============================================")
+		s.logger.Info("============================================")
+		s.logger.Infof("Superadmin created: %s", service.SuperadminEmail)
+		s.logger.Infof("Password: %s", password)
+		s.logger.Info("CHANGE THIS PASSWORD IMMEDIATELY!")
+		s.logger.Info("============================================")
 	} else {
-		log.Printf("Superadmin already exists: %s (ID: %s)", service.SuperadminEmail, user.ID)
+		s.logger.Infof("Superadmin already exists: %s (ID: %s)", service.SuperadminEmail, user.ID)
 	}
 
 	return nil

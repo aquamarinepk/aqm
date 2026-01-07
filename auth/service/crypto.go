@@ -89,6 +89,23 @@ func (g *DefaultPasswordGenerator) GeneratePassword() string {
 	return token
 }
 
+// DevPasswordGenerator returns a fixed password for development mode.
+// Use this when AQM_DEV_MODE=true to avoid having to look up random passwords.
+type DevPasswordGenerator struct {
+	password string
+}
+
+func NewDevPasswordGenerator(password string) *DevPasswordGenerator {
+	if password == "" {
+		password = "Superadmin123!"
+	}
+	return &DevPasswordGenerator{password: password}
+}
+
+func (g *DevPasswordGenerator) GeneratePassword() string {
+	return g.password
+}
+
 // DefaultPINGenerator implements PINGenerator
 type DefaultPINGenerator struct{}
 
