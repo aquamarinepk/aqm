@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/aquamarinepk/aqm/log"
 )
@@ -47,9 +48,11 @@ func (m *TemplateManager) Start(ctx context.Context) error {
 			return err
 		}
 
-		// Use base name as template name (e.g., "list.html")
-		name := filepath.Base(path)
-		_, err = tmpl.New(name).Parse(string(content))
+		// Normalize path to always start from "assets/"
+		// e.g., "testdata/assets/templates/test/page.html" → "assets/templates/test/page.html"
+		normalizedPath := m.normalizePath(path)
+
+		_, err = tmpl.New(normalizedPath).Parse(string(content))
 		return err
 	})
 
@@ -69,19 +72,37 @@ func (m *TemplateManager) Stop(ctx context.Context) error {
 }
 
 // Render renders a full template with error handling.
-func (m *TemplateManager) Render(w http.ResponseWriter, name string, data interface{}) {
+// Namespace and template are combined to form the path: "assets/templates/{namespace}/{template}.html"
+func (m *TemplateManager) Render(w http.ResponseWriter, namespace, template string, data interface{}) {
+	path := m.buildPath(namespace, template)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := m.templates.ExecuteTemplate(w, name, data); err != nil {
-		m.log.Errorf("error rendering template %s: %v", name, err)
+	if err := m.templates.ExecuteTemplate(w, path, data); err != nil {
+		m.log.Errorf("error rendering template %s/%s: %v", namespace, template, err)
 		http.Error(w, "Template rendering error", http.StatusInternalServerError)
 	}
 }
 
 // RenderPartial renders a template fragment without setting Content-Type.
 // Used for htmx partial updates.
-func (m *TemplateManager) RenderPartial(w http.ResponseWriter, name string, data interface{}) {
-	if err := m.templates.ExecuteTemplate(w, name, data); err != nil {
-		m.log.Errorf("error rendering partial %s: %v", name, err)
+// Namespace and template are combined to form the path: "assets/templates/{namespace}/{template}.html"
+func (m *TemplateManager) RenderPartial(w http.ResponseWriter, namespace, template string, data interface{}) {
+	path := m.buildPath(namespace, template)
+	if err := m.templates.ExecuteTemplate(w, path, data); err != nil {
+		m.log.Errorf("error rendering partial %s/%s: %v", namespace, template, err)
 		http.Error(w, "Partial rendering error", http.StatusInternalServerError)
 	}
+}
+
+// buildPath constructs the full template path from namespace and template name.
+func (m *TemplateManager) buildPath(namespace, template string) string {
+	return filepath.Join("assets", "templates", namespace, template+".html")
+}
+
+// normalizePath extracts the path starting from "assets/" to ensure consistent template names.
+func (m *TemplateManager) normalizePath(path string) string {
+	// Find "assets/" in the path and return everything from there
+	if idx := strings.Index(path, "assets"); idx >= 0 {
+		return path[idx:]
+	}
+	return path
 }

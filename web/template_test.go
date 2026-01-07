@@ -10,10 +10,10 @@ import (
 	"github.com/aquamarinepk/aqm/log"
 )
 
-//go:embed testdata/test.html testdata/partial.html
+//go:embed testdata/assets/templates/test/page.html testdata/assets/templates/test/item.html
 var testFS embed.FS
 
-//go:embed testdata/invalid.html
+//go:embed testdata/assets/templates/test/invalid.html
 var invalidFS embed.FS
 
 func TestNewTemplateManager(t *testing.T) {
@@ -85,25 +85,28 @@ func TestTemplateManagerRender(t *testing.T) {
 	mgr.Start(context.Background())
 
 	tests := []struct {
-		name         string
-		templateName string
-		data         interface{}
-		wantStatus   int
-		wantContain  string
+		name        string
+		namespace   string
+		template    string
+		data        interface{}
+		wantStatus  int
+		wantContain string
 	}{
 		{
-			name:         "valid template",
-			templateName: "test.html",
-			data:         map[string]string{"Title": "Test Page"},
-			wantStatus:   200,
-			wantContain:  "Test Page",
+			name:        "valid template",
+			namespace:   "test",
+			template:    "page",
+			data:        map[string]string{"Title": "Test Page"},
+			wantStatus:  200,
+			wantContain: "Test Page",
 		},
 		{
-			name:         "template not found",
-			templateName: "nonexistent.html",
-			data:         nil,
-			wantStatus:   500,
-			wantContain:  "Template rendering error",
+			name:        "template not found",
+			namespace:   "missing",
+			template:    "page",
+			data:        nil,
+			wantStatus:  500,
+			wantContain: "Template rendering error",
 		},
 	}
 
@@ -111,7 +114,7 @@ func TestTemplateManagerRender(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 
-			mgr.Render(w, tt.templateName, tt.data)
+			mgr.Render(w, tt.namespace, tt.template, tt.data)
 
 			if w.Code != tt.wantStatus {
 				t.Errorf("Render() status = %v, want %v", w.Code, tt.wantStatus)
@@ -137,25 +140,28 @@ func TestTemplateManagerRenderPartial(t *testing.T) {
 	mgr.Start(context.Background())
 
 	tests := []struct {
-		name         string
-		templateName string
-		data         interface{}
-		wantStatus   int
-		wantContain  string
+		name        string
+		namespace   string
+		template    string
+		data        interface{}
+		wantStatus  int
+		wantContain string
 	}{
 		{
-			name:         "valid partial",
-			templateName: "partial.html",
-			data:         map[string]string{"Name": "Item"},
-			wantStatus:   200,
-			wantContain:  "Item",
+			name:        "valid partial",
+			namespace:   "test",
+			template:    "item",
+			data:        map[string]string{"Name": "Item"},
+			wantStatus:  200,
+			wantContain: "Item",
 		},
 		{
-			name:         "partial not found",
-			templateName: "missing.html",
-			data:         nil,
-			wantStatus:   500,
-			wantContain:  "Partial rendering error",
+			name:        "partial not found",
+			namespace:   "missing",
+			template:    "item",
+			data:        nil,
+			wantStatus:  500,
+			wantContain: "Partial rendering error",
 		},
 	}
 
@@ -163,7 +169,7 @@ func TestTemplateManagerRenderPartial(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 
-			mgr.RenderPartial(w, tt.templateName, tt.data)
+			mgr.RenderPartial(w, tt.namespace, tt.template, tt.data)
 
 			if w.Code != tt.wantStatus {
 				t.Errorf("RenderPartial() status = %v, want %v", w.Code, tt.wantStatus)
