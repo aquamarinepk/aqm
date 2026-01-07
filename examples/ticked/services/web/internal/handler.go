@@ -206,7 +206,7 @@ func (h *Handler) HandleAddItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(list.Items) > 0 {
-		newItem := list.Items[len(list.Items)-1]
+		newItem := list.Items[0]
 		h.tmplMgr.RenderPartial(w, "todos", "item", newItem)
 	}
 }

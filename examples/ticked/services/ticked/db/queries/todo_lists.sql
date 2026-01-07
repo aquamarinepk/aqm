@@ -28,7 +28,7 @@ DELETE FROM todo_items WHERE id = $1;
 SELECT id, list_id, text, completed, created_at, completed_at
 FROM todo_items
 WHERE list_id = $1
-ORDER BY created_at ASC;
+ORDER BY created_at DESC;
 
 -- name: DeleteTodoItemsByListID :exec
 DELETE FROM todo_items WHERE list_id = $1;

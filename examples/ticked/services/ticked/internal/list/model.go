@@ -2,6 +2,7 @@ package list
 
 import (
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -42,6 +43,13 @@ func (l *TodoList) ID() uuid.UUID {
 // Touch updates the UpdatedAt timestamp.
 func (l *TodoList) Touch() {
 	l.UpdatedAt = time.Now().UTC()
+}
+
+// SortByCreatedAt sorts items by creation date, newest first.
+func (l *TodoList) SortByCreatedAt() {
+	sort.Slice(l.Items, func(i, j int) bool {
+		return l.Items[i].CreatedAt.After(l.Items[j].CreatedAt)
+	})
 }
 
 // NewTodoList creates a new todo list for a user.

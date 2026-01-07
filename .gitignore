@@ -25,6 +25,8 @@ bin/
 examples/ticked/services/authn/authn
 examples/ticked/services/authz/authz
 examples/ticked/services/admin/admin
+examples/ticked/services/ticked/ticked
+examples/ticked/services/web/web
 
 # Service runtime files
 *.pid

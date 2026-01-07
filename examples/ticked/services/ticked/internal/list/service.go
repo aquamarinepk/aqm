@@ -46,16 +46,23 @@ func (s *Service) GetOrCreateList(ctx context.Context, userID uuid.UUID) (*TodoL
 			if err := s.store.Save(ctx, list); err != nil {
 				return nil, err
 			}
+			list.SortByCreatedAt()
 			return list, nil
 		}
 		return nil, err
 	}
+	list.SortByCreatedAt()
 	return list, nil
 }
 
 // GetList retrieves a user's list.
 func (s *Service) GetList(ctx context.Context, userID uuid.UUID) (*TodoList, error) {
-	return s.store.FindByUserID(ctx, userID)
+	list, err := s.store.FindByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	list.SortByCreatedAt()
+	return list, nil
 }
 
 // AddItem adds an item to a user's list.
@@ -73,6 +80,7 @@ func (s *Service) AddItem(ctx context.Context, userID uuid.UUID, text string) (*
 		return nil, err
 	}
 
+	list.SortByCreatedAt()
 	return list, nil
 }
 
@@ -91,6 +99,7 @@ func (s *Service) UpdateItem(ctx context.Context, userID uuid.UUID, itemID uuid.
 		return nil, err
 	}
 
+	list.SortByCreatedAt()
 	return list, nil
 }
 
@@ -109,6 +118,7 @@ func (s *Service) RemoveItem(ctx context.Context, userID uuid.UUID, itemID uuid.
 		return nil, err
 	}
 
+	list.SortByCreatedAt()
 	return list, nil
 }
 
