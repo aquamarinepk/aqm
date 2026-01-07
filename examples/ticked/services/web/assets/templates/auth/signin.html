@@ -13,9 +13,8 @@
             <h1>Sign In to Ticked</h1>
 
             <div class="note">
-                <p><strong>Development Mode</strong></p>
-                <p>This is a work-in-progress authentication interface. Use these credentials to explore the application:</p>
-                <p>Email: <code>john.doe@localhost</code> • Password: <code>johndoe</code></p>
+                <p><strong>First Login</strong></p>
+                <p>On initial bootstrap, superadmin credentials are logged to <code>authn.log</code></p>
             </div>
 
             {{if .Error}}
@@ -25,12 +24,12 @@
             <form hx-post="/signin" hx-target="body" hx-swap="innerHTML">
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="text" id="email" name="email" value="john.doe@localhost" required autofocus>
+                    <input type="text" id="email" name="email" placeholder="email@example.com" required autofocus>
                 </div>
 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" value="johndoe" required>
+                    <input type="password" id="password" name="password" required>
                 </div>
 
                 <button type="submit" class="btn-primary">Sign In</button>

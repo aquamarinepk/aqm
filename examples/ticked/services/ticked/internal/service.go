@@ -3,11 +3,13 @@ package internal
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
 
 	"github.com/aquamarinepk/aqm/config"
-	aqmlog "github.com/aquamarinepk/aqm/log"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/ticked/internal/list"
+	"github.com/aquamarinepk/aqm/log"
+	"github.com/aquamarinepk/aqm/migrate"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/lib/pq"
 )
@@ -15,17 +17,17 @@ import (
 // Service coordinates the ticked service components and manages lifecycle.
 type Service struct {
 	cfg *config.Config
-	log aqmlog.Logger
+	log log.Logger
 	db  *sql.DB
 
 	listHandler *list.Handler
 }
 
 // New creates a new Service with the given configuration.
-func New(cfg *config.Config, log aqmlog.Logger) (*Service, error) {
+func New(cfg *config.Config, migrationsFS embed.FS, logger log.Logger) (*Service, error) {
 	s := &Service{
 		cfg: cfg,
-		log: log,
+		log: logger,
 	}
 
 	var store list.TodoListStore
@@ -42,6 +44,16 @@ func New(cfg *config.Config, log aqmlog.Logger) (*Service, error) {
 			return nil, fmt.Errorf("failed to ping database: %w", err)
 		}
 
+		// Run migrations
+		migrator := migrate.New(migrationsFS, "postgres", logger)
+		migrator.SetDB(db)
+		migrator.SetPath("db/migrations")
+
+		if err := migrator.Run(context.Background()); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("migration failed: %w", err)
+		}
+
 		s.db = db
 		store = list.NewPostgresStore(db)
 	} else {
@@ -49,8 +61,8 @@ func New(cfg *config.Config, log aqmlog.Logger) (*Service, error) {
 	}
 
 	// Initialize service and handler
-	listService := list.NewService(store, cfg, log)
-	s.listHandler = list.NewHandler(listService, cfg, log)
+	listService := list.NewService(store, cfg, logger)
+	s.listHandler = list.NewHandler(listService, cfg, logger)
 
 	return s, nil
 }

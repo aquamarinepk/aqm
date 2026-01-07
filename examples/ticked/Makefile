@@ -10,10 +10,8 @@ DB_HOST?=localhost
 DB_PORT?=5432
 DB_USER?=dev
 DB_PASS?=dev
-DB_AUTHN?=authn
-DB_AUTHZ?=authz
-DB_ADMIN?=admin
-DB_TICKED?=ticked
+DB_NAME?=ticked
+SCHEMAS=authn authz ticked
 
 # Phony targets
 .PHONY: help build run run-fake stop logs logs-clear fresh test test-all clean db-init db-drop db-reset seed-test-user
@@ -82,11 +80,12 @@ run: build
 		export AUTHN_DATABASE_PORT=$(DB_PORT) && \
 		export AUTHN_DATABASE_USER=$(DB_USER) && \
 		export AUTHN_DATABASE_PASSWORD=$(DB_PASS) && \
-		export AUTHN_DATABASE_NAME=$(DB_AUTHN) && \
+		export AUTHN_DATABASE_NAME=$(DB_NAME) && \
+		export AUTHN_DATABASE_SCHEMA=authn && \
 		export AUTHN_SERVER_PORT=:8080 && \
 		export AUTHN_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
 		export AUTHN_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
-		export AUTHN_CRYPTO_TOKENPRIVATEKEY=mTn8gRo4YfobTBcc8zooULexXqUVWYa0LK7fE6r3lGM+1bhgC58dvsd/XgNwO6J8Eddw4ra+Q6SaPKocCZMJqA== && \
+		export AUTHN_CRYPTO_TOKENPRIVATEKEY=7uVnt+H8pqquyDWhzkPvfNNpJli0FV9kC2LvZbr/AVsjsdGZ0q5nUZVnDYtenONndtYjDhR9VFmYy5xH0w2/mg== && \
 		nohup ./authn > authn.log 2>&1 & echo $$! > authn.pid; \
 		sleep 2
 	@echo "   📦 Starting AuthZ on :8083..."
@@ -96,7 +95,8 @@ run: build
 		export AUTHZ_DATABASE_PORT=$(DB_PORT) && \
 		export AUTHZ_DATABASE_USER=$(DB_USER) && \
 		export AUTHZ_DATABASE_PASSWORD=$(DB_PASS) && \
-		export AUTHZ_DATABASE_NAME=$(DB_AUTHZ) && \
+		export AUTHZ_DATABASE_NAME=$(DB_NAME) && \
+		export AUTHZ_DATABASE_SCHEMA=authz && \
 		export AUTHZ_SERVER_PORT=:8083 && \
 		export AUTHZ_AUTHN_URL=http://localhost:8080 && \
 		export AUTHZ_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
@@ -105,12 +105,6 @@ run: build
 		sleep 2
 	@echo "   📦 Starting Admin on :8081..."
 	@cd services/admin && \
-		export ADMIN_DATABASE_DRIVER=postgres && \
-		export ADMIN_DATABASE_HOST=$(DB_HOST) && \
-		export ADMIN_DATABASE_PORT=$(DB_PORT) && \
-		export ADMIN_DATABASE_USER=$(DB_USER) && \
-		export ADMIN_DATABASE_PASSWORD=$(DB_PASS) && \
-		export ADMIN_DATABASE_NAME=$(DB_ADMIN) && \
 		export ADMIN_SERVER_PORT=:8081 && \
 		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8080 && \
 		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
@@ -124,7 +118,8 @@ run: build
 		export TICKED_DATABASE_PORT=$(DB_PORT) && \
 		export TICKED_DATABASE_USER=$(DB_USER) && \
 		export TICKED_DATABASE_PASSWORD=$(DB_PASS) && \
-		export TICKED_DATABASE_NAME=$(DB_TICKED) && \
+		export TICKED_DATABASE_NAME=$(DB_NAME) && \
+		export TICKED_DATABASE_SCHEMA=ticked && \
 		export TICKED_SERVER_PORT=:8084 && \
 		nohup ./ticked > ticked.log 2>&1 & echo $$! > ticked.pid; \
 		sleep 2
@@ -162,7 +157,7 @@ run-fake: build
 		export AUTHN_SERVER_PORT=:8080 && \
 		export AUTHN_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
 		export AUTHN_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
-		export AUTHN_CRYPTO_TOKENPRIVATEKEY=mTn8gRo4YfobTBcc8zooULexXqUVWYa0LK7fE6r3lGM+1bhgC58dvsd/XgNwO6J8Eddw4ra+Q6SaPKocCZMJqA== && \
+		export AUTHN_CRYPTO_TOKENPRIVATEKEY=7uVnt+H8pqquyDWhzkPvfNNpJli0FV9kC2LvZbr/AVsjsdGZ0q5nUZVnDYtenONndtYjDhR9VFmYy5xH0w2/mg== && \
 		nohup ./authn > authn.log 2>&1 & echo $$! > authn.pid; \
 		sleep 2
 	@echo "   📦 Starting AuthZ on :8083..."
@@ -310,30 +305,20 @@ clean:
 
 # Database management
 db-init:
-	@echo "🗄️  Creating PostgreSQL databases..."
+	@echo "🗄️  Creating PostgreSQL database and schemas..."
 	@command -v psql >/dev/null 2>&1 || { echo "❌ psql not found. Install PostgreSQL client."; exit 1; }
-	@echo "   📦 Creating $(DB_AUTHN)..."
-	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_AUTHN);" 2>/dev/null || echo "   ⚠️  $(DB_AUTHN) already exists"
-	@echo "   📦 Creating $(DB_AUTHZ)..."
-	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_AUTHZ);" 2>/dev/null || echo "   ⚠️  $(DB_AUTHZ) already exists"
-	@echo "   📦 Creating $(DB_ADMIN)..."
-	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_ADMIN);" 2>/dev/null || echo "   ⚠️  $(DB_ADMIN) already exists"
-	@echo "   📦 Creating $(DB_TICKED)..."
-	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_TICKED);" 2>/dev/null || echo "   ⚠️  $(DB_TICKED) already exists"
-	@echo "✅ Databases ready"
+	@echo "   📦 Creating database $(DB_NAME)..."
+	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_NAME) OWNER $(DB_USER);" 2>/dev/null || echo "   ⚠️  $(DB_NAME) already exists"
+	@echo "   📦 Creating schemas: $(SCHEMAS)..."
+	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d $(DB_NAME) -c "CREATE SCHEMA IF NOT EXISTS authn AUTHORIZATION $(DB_USER); CREATE SCHEMA IF NOT EXISTS authz AUTHORIZATION $(DB_USER); CREATE SCHEMA IF NOT EXISTS ticked AUTHORIZATION $(DB_USER);" 2>/dev/null
+	@echo "✅ Database and schemas ready"
 
 db-drop:
-	@echo "🗑️  Dropping PostgreSQL databases..."
+	@echo "🗑️  Dropping PostgreSQL database..."
 	@command -v psql >/dev/null 2>&1 || { echo "❌ psql not found. Install PostgreSQL client."; exit 1; }
-	@echo "   🗑️  Dropping $(DB_AUTHN)..."
-	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "DROP DATABASE IF EXISTS $(DB_AUTHN);" 2>/dev/null
-	@echo "   🗑️  Dropping $(DB_AUTHZ)..."
-	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "DROP DATABASE IF EXISTS $(DB_AUTHZ);" 2>/dev/null
-	@echo "   🗑️  Dropping $(DB_ADMIN)..."
-	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "DROP DATABASE IF EXISTS $(DB_ADMIN);" 2>/dev/null
-	@echo "   🗑️  Dropping $(DB_TICKED)..."
-	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "DROP DATABASE IF EXISTS $(DB_TICKED);" 2>/dev/null
-	@echo "✅ Databases dropped"
+	@echo "   🗑️  Dropping $(DB_NAME)..."
+	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "DROP DATABASE IF EXISTS $(DB_NAME);" 2>/dev/null
+	@echo "✅ Database dropped"
 
 db-reset: db-drop db-init
 	@echo "✅ Database reset complete"

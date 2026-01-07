@@ -1,19 +1,25 @@
 package internal
 
 import (
+	"context"
 	"database/sql"
+	"embed"
+	"fmt"
 
 	"github.com/aquamarinepk/aqm/auth"
 	"github.com/aquamarinepk/aqm/auth/fake"
 	"github.com/aquamarinepk/aqm/auth/postgres"
+	"github.com/aquamarinepk/aqm/log"
+	"github.com/aquamarinepk/aqm/migrate"
 	_ "github.com/lib/pq"
 )
 
 // NewPostgresStores creates and returns Postgres-backed store implementations.
 // It opens a database connection using the provided connection string and
 // returns stores for roles and grants, along with the database handle.
+// Runs migrations before returning stores.
 // The caller is responsible for closing the database connection.
-func NewPostgresStores(connStr string) (
+func NewPostgresStores(connStr string, migrationsFS embed.FS, logger log.Logger) (
 	auth.RoleStore,
 	auth.GrantStore,
 	*sql.DB,
@@ -27,6 +33,16 @@ func NewPostgresStores(connStr string) (
 	if err := db.Ping(); err != nil {
 		db.Close()
 		return nil, nil, nil, err
+	}
+
+	// Run migrations
+	migrator := migrate.New(migrationsFS, "postgres", logger)
+	migrator.SetDB(db)
+	migrator.SetPath("migrations")
+
+	if err := migrator.Run(context.Background()); err != nil {
+		db.Close()
+		return nil, nil, nil, fmt.Errorf("migration failed: %w", err)
 	}
 
 	roleStore := postgres.NewRoleStore(db)

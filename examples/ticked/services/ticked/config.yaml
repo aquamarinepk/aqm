@@ -5,9 +5,10 @@ database:
   driver: "fake"
   host: "localhost"
   port: 5432
-  user: "ticked"
-  password: "ticked"
+  user: "dev"
+  password: "dev"
   database: "ticked"
+  schema: "ticked"
   sslmode: "disable"
 
 log:

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"os"
 	"os/signal"
@@ -12,6 +13,9 @@ import (
 	"github.com/aquamarinepk/aqm/examples/ticked/services/authz/internal"
 	"github.com/aquamarinepk/aqm/log"
 )
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
 
 const (
 	name    = "authz"
@@ -43,7 +47,7 @@ func main() {
 
 	var deps []any
 
-	svc, err := internal.New(cfg, logger)
+	svc, err := internal.New(cfg, migrationsFS, logger)
 	if err != nil {
 		logger.Errorf("Cannot create service: %v", err)
 		os.Exit(1)

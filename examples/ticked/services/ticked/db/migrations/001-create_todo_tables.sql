@@ -1,3 +1,4 @@
+-- +migrate Up
 -- Create todo_lists table (aggregate root)
 CREATE TABLE IF NOT EXISTS todo_lists (
     id UUID PRIMARY KEY,

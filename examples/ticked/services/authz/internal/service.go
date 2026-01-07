@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"encoding/hex"
 	"fmt"
 
@@ -31,7 +32,7 @@ type Service struct {
 // New creates a new Service with the given configuration and logger.
 // It initializes stores (postgres or fake based on config), bootstrap service, and HTTP handlers.
 // Returns an error if initialization fails.
-func New(cfg *config.Config, logger log.Logger) (*Service, error) {
+func New(cfg *config.Config, migrationsFS embed.FS, logger log.Logger) (*Service, error) {
 	s := &Service{
 		cfg: cfg,
 		log: logger,
@@ -39,7 +40,7 @@ func New(cfg *config.Config, logger log.Logger) (*Service, error) {
 
 	if cfg.Database.Driver == "postgres" {
 		connStr := cfg.Database.ConnectionString()
-		roleStore, grantStore, db, err := NewPostgresStores(connStr)
+		roleStore, grantStore, db, err := NewPostgresStores(connStr, migrationsFS, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create postgres stores: %w", err)
 		}

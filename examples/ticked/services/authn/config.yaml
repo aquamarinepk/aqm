@@ -5,9 +5,10 @@ database:
   driver: "fake"
   host: "localhost"
   port: 5432
-  user: "authn"
-  password: "authn"
-  database: "authn"
+  user: "dev"
+  password: "dev"
+  database: "ticked"
+  schema: "authn"
   sslmode: "disable"
 
 crypto:
@@ -23,5 +24,5 @@ auth:
   enablebootstrap: true
 
 log:
-  level: "info"
+  level: "debug"
   format: "text"

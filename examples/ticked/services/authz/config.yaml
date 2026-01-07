@@ -12,8 +12,8 @@ database:
   driver: fake  # "fake" for development, "postgres" for production
   host: localhost
   port: 5432
-  user: authz
-  password: authz
+  user: dev
+  password: dev
   database: ticked
   schema: authz
   sslmode: disable
