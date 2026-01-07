@@ -16,7 +16,7 @@ DB_ADMIN?=admin
 DB_TICKED?=ticked
 
 # Phony targets
-.PHONY: help build run run-fake stop logs logs-clear fresh test test-all clean db-init db-drop db-reset
+.PHONY: help build run run-fake stop logs logs-clear fresh test test-all clean db-init db-drop db-reset seed-test-user
 
 help:
 	@echo "Ticked orchestration commands:"
@@ -33,9 +33,12 @@ help:
 	@echo "  make clean       - Clean binaries, logs, and PIDs"
 	@echo ""
 	@echo "Database commands:"
-	@echo "  make db-init     - Create PostgreSQL databases for all services"
-	@echo "  make db-drop     - Drop all PostgreSQL databases"
-	@echo "  make db-reset    - Drop and recreate all databases"
+	@echo "  make db-init          - Create PostgreSQL databases for all services"
+	@echo "  make db-drop          - Drop all PostgreSQL databases"
+	@echo "  make db-reset         - Drop and recreate all databases"
+	@echo ""
+	@echo "Seeding commands:"
+	@echo "  make seed-test-user   - Create test user (test@example.com / password123)"
 	@echo ""
 	@echo "Individual service targets:"
 	@echo "  make build-<service>  - Build specific service (authn, authz, admin)"
@@ -324,3 +327,12 @@ db-drop:
 
 db-reset: db-drop db-init
 	@echo "✅ Database reset complete"
+
+# Seed test user
+seed-test-user:
+	@echo "👤 Creating test user..."
+	@command -v curl >/dev/null 2>&1 || { echo "❌ curl not found. Install curl."; exit 1; }
+	@curl -X POST http://localhost:8080/auth/signup \
+		-H "Content-Type: application/json" \
+		-d '{"email":"test@example.com","password":"password123","username":"testuser","display_name":"Test User"}' \
+		-s -o /dev/null -w "%{http_code}" | grep -q "200" && echo "✅ Test user created: test@example.com / password123" || echo "⚠️  User may already exist or authn service not running"
