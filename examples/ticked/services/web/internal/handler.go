@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"html/template"
 	"net/http"
 	"time"
 
@@ -18,44 +17,25 @@ import (
 type Handler struct {
 	todoStore    TodoListStore
 	sessionStore *SessionStore
+	tmplMgr      *web.TemplateManager
 	cfg          *config.Config
 	log          log.Logger
-	templates    *template.Template
 }
 
 // NewHandler creates a new handler instance.
-func NewHandler(todoStore TodoListStore, sessionStore *SessionStore, cfg *config.Config, log log.Logger) *Handler {
-	tmpl, err := template.ParseGlob("templates/*.html")
-	if err != nil {
-		tmpl, err = template.ParseGlob("internal/templates/*.html")
-		if err != nil {
-			log.Errorf("Failed to load templates: %v", err)
-			tmpl = template.New("empty")
-		}
-	}
-
-	if partials, err := template.ParseGlob("templates/partials/*.html"); err == nil {
-		for _, t := range partials.Templates() {
-			tmpl.AddParseTree(t.Name(), t.Tree)
-		}
-	} else if partials, err := template.ParseGlob("internal/templates/partials/*.html"); err == nil {
-		for _, t := range partials.Templates() {
-			tmpl.AddParseTree(t.Name(), t.Tree)
-		}
-	}
-
+func NewHandler(todoStore TodoListStore, sessionStore *SessionStore, tmplMgr *web.TemplateManager, cfg *config.Config, log log.Logger) *Handler {
 	return &Handler{
 		todoStore:    todoStore,
 		sessionStore: sessionStore,
+		tmplMgr:      tmplMgr,
 		cfg:          cfg,
 		log:          log,
-		templates:    tmpl,
 	}
 }
 
 // RegisterRoutes registers all HTTP routes.
 func (h *Handler) RegisterRoutes(r chi.Router) {
-	fileServer := http.FileServer(http.Dir("internal/static"))
+	fileServer := http.FileServer(http.Dir("assets/static"))
 	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
 
 	r.Get("/signin", h.ShowSignIn)
@@ -108,7 +88,7 @@ func (h *Handler) ShowSignIn(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Title": "Sign In - Ticked",
 	}
-	h.renderTemplate(w, "signin.html", data)
+	h.tmplMgr.Render(w, "auth", "signin", data)
 }
 
 // Demo user credentials (until seeding and authn integration)
@@ -125,7 +105,7 @@ var demoUserID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 // TODO: Integrate with authn service /auth/signin endpoint
 func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		h.renderError(w, "signin.html", "Failed to parse form. Please try again.")
+		h.renderError(w, "auth", "signin", "Failed to parse form. Please try again.")
 		return
 	}
 
@@ -133,13 +113,13 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if email == "" || password == "" {
-		h.renderError(w, "signin.html", "Email and password are required.")
+		h.renderError(w, "auth", "signin", "Email and password are required.")
 		return
 	}
 
 	// Demo validation (until authn integration)
 	if email != demoEmail || password != demoPassword {
-		h.renderError(w, "signin.html", "Invalid credentials. Try: john.doe@localhost / johndoe")
+		h.renderError(w, "auth", "signin", "Invalid credentials. Try: john.doe@localhost / johndoe")
 		return
 	}
 
@@ -155,7 +135,7 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.sessionStore.Save(session); err != nil {
 		h.log.Errorf("Failed to save session: %v", err)
-		h.renderError(w, "signin.html", "Session error. Please try again.")
+		h.renderError(w, "auth", "signin", "Session error. Please try again.")
 		return
 	}
 
@@ -210,7 +190,7 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		"UserEmail": session.Email,
 	}
 
-	h.renderTemplate(w, "list.html", data)
+	h.tmplMgr.Render(w, "todos", "list", data)
 }
 
 // HandleAddItem adds a new item (htmx endpoint).
@@ -227,7 +207,7 @@ func (h *Handler) HandleAddItem(w http.ResponseWriter, r *http.Request) {
 
 	if len(list.Items) > 0 {
 		newItem := list.Items[len(list.Items)-1]
-		web.RenderPartial(w, h.templates, "item.html", newItem, h.log)
+		h.tmplMgr.RenderPartial(w, "todos", "item", newItem)
 	}
 }
 
@@ -271,7 +251,7 @@ func (h *Handler) HandleToggleItem(w http.ResponseWriter, r *http.Request) {
 
 	for _, item := range list.Items {
 		if item.ID == itemID {
-			web.RenderPartial(w, h.templates, "item.html", item, h.log)
+			h.tmplMgr.RenderPartial(w, "todos", "item", item)
 			return
 		}
 	}
@@ -290,16 +270,11 @@ func (h *Handler) HandleRemoveItem(w http.ResponseWriter, r *http.Request) {
 	htmx.RespondDelete(w, err, h.log)
 }
 
-// renderTemplate renders a template with the given data.
-func (h *Handler) renderTemplate(w http.ResponseWriter, name string, data map[string]interface{}) {
-	web.RenderTemplate(w, h.templates, name, data, h.log)
-}
-
-// renderError renders an error message on the signin template.
-func (h *Handler) renderError(w http.ResponseWriter, template string, message string) {
+// renderError renders an error message on a template.
+func (h *Handler) renderError(w http.ResponseWriter, namespace, template, message string) {
 	data := map[string]interface{}{
 		"Title": "Sign In - Ticked",
 		"Error": message,
 	}
-	h.renderTemplate(w, template, data)
+	h.tmplMgr.Render(w, namespace, template, data)
 }

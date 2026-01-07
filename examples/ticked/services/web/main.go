@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"os"
 	"os/signal"
@@ -11,7 +12,11 @@ import (
 	"github.com/aquamarinepk/aqm/config"
 	"github.com/aquamarinepk/aqm/examples/ticked/services/web/internal"
 	"github.com/aquamarinepk/aqm/log"
+	"github.com/aquamarinepk/aqm/web"
 )
+
+//go:embed assets
+var assetsFS embed.FS
 
 const (
 	name    = "web"
@@ -43,7 +48,10 @@ func main() {
 
 	var deps []any
 
-	svc, err := internal.New(cfg, logger)
+	tmplMgr := web.NewTemplateManager(assetsFS, logger)
+	deps = append(deps, tmplMgr)
+
+	svc, err := internal.New(tmplMgr, cfg, logger)
 	if err != nil {
 		logger.Errorf("Cannot create service: %v", err)
 		os.Exit(1)

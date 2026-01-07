@@ -5,6 +5,7 @@ import (
 
 	"github.com/aquamarinepk/aqm/config"
 	"github.com/aquamarinepk/aqm/log"
+	"github.com/aquamarinepk/aqm/web"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -18,7 +19,7 @@ type Service struct {
 }
 
 // New creates a new Service with the given configuration.
-func New(cfg *config.Config, log log.Logger) (*Service, error) {
+func New(tmplMgr *web.TemplateManager, cfg *config.Config, log log.Logger) (*Service, error) {
 	s := &Service{
 		cfg: cfg,
 		log: log,
@@ -30,7 +31,7 @@ func New(cfg *config.Config, log log.Logger) (*Service, error) {
 	sessionTTL := cfg.GetDurationOrDef("auth.session.ttl", 24*3600*1000000000)
 	s.sessionStore = NewSessionStore(sessionTTL)
 
-	s.handler = NewHandler(s.todoStore, s.sessionStore, cfg, log)
+	s.handler = NewHandler(s.todoStore, s.sessionStore, tmplMgr, cfg, log)
 
 	return s, nil
 }
