@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aquamarinepk/aqm/config"
+	"github.com/aquamarinepk/aqm/httpclient"
 	"github.com/aquamarinepk/aqm/log"
 	"github.com/aquamarinepk/aqm/web"
 	"github.com/go-chi/chi/v5"
@@ -28,10 +29,13 @@ func New(tmplMgr *web.TemplateManager, cfg *config.Config, log log.Logger) (*Ser
 	tickedURL := cfg.GetStringOrDef("services.ticked.url", "http://localhost:8084")
 	s.todoStore = NewHTTPTodoListStore(tickedURL, log)
 
+	authnURL := cfg.GetStringOrDef("services.authn.url", "http://localhost:8080")
+	authnClient := NewAuthNClient(httpclient.New(authnURL, log))
+
 	sessionTTL := cfg.GetDurationOrDef("auth.session.ttl", 24*3600*1000000000)
 	s.sessionStore = NewSessionStore(sessionTTL)
 
-	s.handler = NewHandler(s.todoStore, s.sessionStore, tmplMgr, cfg, log)
+	s.handler = NewHandler(s.todoStore, authnClient, s.sessionStore, tmplMgr, cfg, log)
 
 	return s, nil
 }

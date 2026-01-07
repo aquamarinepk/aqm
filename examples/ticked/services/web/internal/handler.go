@@ -16,6 +16,7 @@ import (
 // Handler wires HTTP routes for the web interface.
 type Handler struct {
 	todoStore    TodoListStore
+	authnClient  *AuthNClient
 	sessionStore *SessionStore
 	tmplMgr      *web.TemplateManager
 	cfg          *config.Config
@@ -23,9 +24,10 @@ type Handler struct {
 }
 
 // NewHandler creates a new handler instance.
-func NewHandler(todoStore TodoListStore, sessionStore *SessionStore, tmplMgr *web.TemplateManager, cfg *config.Config, log log.Logger) *Handler {
+func NewHandler(todoStore TodoListStore, authnClient *AuthNClient, sessionStore *SessionStore, tmplMgr *web.TemplateManager, cfg *config.Config, log log.Logger) *Handler {
 	return &Handler{
 		todoStore:    todoStore,
+		authnClient:  authnClient,
 		sessionStore: sessionStore,
 		tmplMgr:      tmplMgr,
 		cfg:          cfg,
@@ -71,6 +73,7 @@ func (h *Handler) SessionMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), "session", session)
+		ctx = web.WithUserID(ctx, session.UserID.String())
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -91,21 +94,9 @@ func (h *Handler) ShowSignIn(w http.ResponseWriter, r *http.Request) {
 	h.tmplMgr.Render(w, "auth", "signin", data)
 }
 
-// Demo user credentials (until seeding and authn integration)
-const (
-	demoEmail    = "john.doe@localhost"
-	demoPassword = "johndoe"
-)
-
-var demoUserID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
-
-// HandleSignIn processes signin requests.
-// NOTE: WIP - Temporary signin until proper authn integration
-// Currently accepts john.doe@localhost / johndoe
-// TODO: Integrate with authn service /auth/signin endpoint
 func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		h.renderError(w, "auth", "signin", "Failed to parse form. Please try again.")
+		h.renderError(w, "auth", "signin", "Cannot parse form")
 		return
 	}
 
@@ -113,29 +104,28 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if email == "" || password == "" {
-		h.renderError(w, "auth", "signin", "Email and password are required.")
+		h.renderError(w, "auth", "signin", "Email and password are required")
 		return
 	}
 
-	// Demo validation (until authn integration)
-	if email != demoEmail || password != demoPassword {
-		h.renderError(w, "auth", "signin", "Invalid credentials. Try: john.doe@localhost / johndoe")
+	user, _, err := h.authnClient.SignIn(r.Context(), email, password)
+	if err != nil {
+		h.log.Errorf("Authentication error: %v", err)
+		h.renderError(w, "auth", "signin", "Invalid credentials")
 		return
 	}
-
-	userID := demoUserID
 
 	session := &Session{
 		ID:        uuid.New().String(),
-		UserID:    userID,
-		Email:     email,
+		UserID:    user.ID,
+		Email:     user.Email,
 		CreatedAt: time.Now(),
 		ExpiresAt: time.Now().Add(h.sessionStore.ttl),
 	}
 
 	if err := h.sessionStore.Save(session); err != nil {
-		h.log.Errorf("Failed to save session: %v", err)
-		h.renderError(w, "auth", "signin", "Session error. Please try again.")
+		h.log.Errorf("Session save error: %v", err)
+		h.renderError(w, "auth", "signin", "Session error")
 		return
 	}
 
@@ -145,7 +135,7 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 		Value:    session.ID,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(h.sessionStore.ttl.Seconds()),
 	})
