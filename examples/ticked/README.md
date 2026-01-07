@@ -1,12 +1,16 @@
-# Ticked - aqm Microservices Example
+# Ticked - Aquamarine Microservices Example
 
-Complete microservices setup demonstrating aqm framework with authentication, authorization, and admin interface.
+Complete microservices setup demonstrating Aquamarine framework with authentication, authorization, and a simple todo list application.
+
+Nobody implements a todo list with microservices orchestration in the real world. But a todo list is the archetypical example for a reason: it's familiar, simple to understand, and lets us focus on the framework patterns rather than complex business logic. This is a reference implementation, not a production architecture recommendation.
 
 ## Architecture
 
-- **AuthN** (port 8082): Authentication service with user management
-- **AuthZ** (port 8083): Authorization service with roles and grants
-- **Admin** (port 8081): Web admin interface for managing users and roles
+- **AuthN** (port 8080): Authentication service (signup, signin, tokens)
+- **Admin** (port 8081): Admin interface
+- **Web** (port 8082): Web frontend
+- **AuthZ** (port 8083): Authorization service (roles, grants, permissions)
+- **Ticked** (port 8084): Todo list service (the actual domain)
 
 ## Prerequisites
 
@@ -43,10 +47,18 @@ This creates three databases:
 make run
 ```
 
-Services will start on:
-- AuthN: http://localhost:8082
-- AuthZ: http://localhost:8083
-- Admin: http://localhost:8081
+Expected output:
+```
+🎉 All services started!
+📡 Services running:
+   • AuthN: http://localhost:8080 (authentication)
+   • Admin: http://localhost:8081 (admin interface)
+   • Web: http://localhost:8082 (web interface)
+   • AuthZ: http://localhost:8083 (authorization)
+   • Ticked: http://localhost:8084 (todo lists)
+```
+
+Access the web interface at http://localhost:8082
 
 ### 4. View logs
 

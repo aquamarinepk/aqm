@@ -25,7 +25,7 @@ import (
 //   4. PERFORMANCE: Enables indexes on item fields vs full document scans
 //   5. TYPE SAFETY: sqlc generates type-safe Go code from SQL queries
 //
-// This pattern is portable across PostgreSQL, MySQL, and SQLite, making it
+// This pattern is portable across PostgreSQL and SQLite, making it
 // the recommended approach for aqm-based applications.
 //
 // Schema:
