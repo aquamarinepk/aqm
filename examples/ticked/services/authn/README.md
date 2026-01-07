@@ -36,7 +36,7 @@ go run main.go
 ```
 
 The service will:
-- Start on `:8080`
+- Start on `:8082`
 - Use in-memory fake stores
 - Bootstrap a superadmin user and print the password
 - Be ready to accept requests
@@ -45,7 +45,7 @@ The service will:
 
 ```bash
 # Bootstrap creates a superadmin - use the password from startup logs
-curl -X POST http://localhost:8080/auth/signin \
+curl -X POST http://localhost:8082/auth/signin \
   -H "Content-Type: application/json" \
   -d '{
     "email": "superadmin@system.local",
@@ -53,7 +53,7 @@ curl -X POST http://localhost:8080/auth/signin \
   }'
 
 # Sign up a new user
-curl -X POST http://localhost:8080/auth/signup \
+curl -X POST http://localhost:8082/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -82,7 +82,7 @@ All environment variables use the `AUTHN_` prefix with sections separated by und
 
 ```bash
 # Server
-AUTHN_SERVER_PORT=:8080
+AUTHN_SERVER_PORT=:8082
 
 # Database
 AUTHN_DATABASE_DRIVER=fake              # or postgres
@@ -114,7 +114,7 @@ You can also use a `config.yaml` file:
 
 ```yaml
 server:
-  port: ":8080"
+  port: ":8082"
 
 database:
   driver: "fake"  # or "postgres"

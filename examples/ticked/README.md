@@ -6,9 +6,9 @@ Nobody implements a todo list with microservices orchestration in the real world
 
 ## Architecture
 
-- **AuthN** (port 8080): Authentication service (signup, signin, tokens)
+- **Web** (port 8080): Web frontend
 - **Admin** (port 8081): Admin interface
-- **Web** (port 8082): Web frontend
+- **AuthN** (port 8082): Authentication service (signup, signin, tokens)
 - **AuthZ** (port 8083): Authorization service (roles, grants, permissions)
 - **Ticked** (port 8084): Todo list service (the actual domain)
 
@@ -51,14 +51,14 @@ Expected output:
 ```
 🎉 All services started!
 📡 Services running:
-   • AuthN: http://localhost:8080 (authentication)
+   • Web: http://localhost:8080 (web interface)
    • Admin: http://localhost:8081 (admin interface)
-   • Web: http://localhost:8082 (web interface)
+   • AuthN: http://localhost:8082 (authentication)
    • AuthZ: http://localhost:8083 (authorization)
    • Ticked: http://localhost:8084 (todo lists)
 ```
 
-Access the web interface at http://localhost:8082
+Access the web interface at http://localhost:8080
 
 ### 4. View logs
 

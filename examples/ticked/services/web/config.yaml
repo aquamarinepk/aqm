@@ -1,9 +1,9 @@
 server:
-  port: ":8082"
+  port: ":8080"
 
 services:
   authn:
-    url: "http://localhost:8080"
+    url: "http://localhost:8082"
   ticked:
     url: "http://localhost:8084"
 

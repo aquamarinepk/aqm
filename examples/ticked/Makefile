@@ -73,7 +73,23 @@ run: build
 	@echo "🚀 Starting Ticked services..."
 	@$(MAKE) stop > /dev/null 2>&1 || true
 	@echo ""
-	@echo "   📦 Starting AuthN on :8080..."
+	@echo "   📦 Starting Web on :8080..."
+	@cd services/web && \
+		export WEB_SERVER_PORT=:8080 && \
+		export WEB_SERVICES_AUTHN_URL=http://localhost:8082 && \
+		export WEB_SERVICES_TICKED_URL=http://localhost:8084 && \
+		export WEB_AUTH_SESSION_TTL=24h && \
+		nohup ./web > web.log 2>&1 & echo $$! > web.pid; \
+		sleep 2
+	@echo "   📦 Starting Admin on :8081..."
+	@cd services/admin && \
+		export ADMIN_SERVER_PORT=:8081 && \
+		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8082 && \
+		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
+		export ADMIN_PREFLIGHT_ENABLED=true && \
+		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
+		sleep 2
+	@echo "   📦 Starting AuthN on :8082..."
 	@cd services/authn && \
 		export AUTHN_DATABASE_DRIVER=postgres && \
 		export AUTHN_DATABASE_HOST=$(DB_HOST) && \
@@ -82,7 +98,7 @@ run: build
 		export AUTHN_DATABASE_PASSWORD=$(DB_PASS) && \
 		export AUTHN_DATABASE_NAME=$(DB_NAME) && \
 		export AUTHN_DATABASE_SCHEMA=authn && \
-		export AUTHN_SERVER_PORT=:8080 && \
+		export AUTHN_SERVER_PORT=:8082 && \
 		export AUTHN_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
 		export AUTHN_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
 		export AUTHN_CRYPTO_TOKENPRIVATEKEY=7uVnt+H8pqquyDWhzkPvfNNpJli0FV9kC2LvZbr/AVsjsdGZ0q5nUZVnDYtenONndtYjDhR9VFmYy5xH0w2/mg== && \
@@ -98,18 +114,10 @@ run: build
 		export AUTHZ_DATABASE_NAME=$(DB_NAME) && \
 		export AUTHZ_DATABASE_SCHEMA=authz && \
 		export AUTHZ_SERVER_PORT=:8083 && \
-		export AUTHZ_AUTHN_URL=http://localhost:8080 && \
+		export AUTHZ_AUTHN_URL=http://localhost:8082 && \
 		export AUTHZ_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
 		export AUTHZ_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
 		nohup ./authz > authz.log 2>&1 & echo $$! > authz.pid; \
-		sleep 2
-	@echo "   📦 Starting Admin on :8081..."
-	@cd services/admin && \
-		export ADMIN_SERVER_PORT=:8081 && \
-		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8080 && \
-		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
-		export ADMIN_PREFLIGHT_ENABLED=true && \
-		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
 		sleep 2
 	@echo "   📦 Starting Ticked on :8084..."
 	@cd services/ticked && \
@@ -123,22 +131,14 @@ run: build
 		export TICKED_SERVER_PORT=:8084 && \
 		nohup ./ticked > ticked.log 2>&1 & echo $$! > ticked.pid; \
 		sleep 2
-	@echo "   📦 Starting Web on :8082..."
-	@cd services/web && \
-		export WEB_SERVER_PORT=:8082 && \
-		export WEB_SERVICES_AUTHN_URL=http://localhost:8080 && \
-		export WEB_SERVICES_TICKED_URL=http://localhost:8084 && \
-		export WEB_AUTH_SESSION_TTL=24h && \
-		nohup ./web > web.log 2>&1 & echo $$! > web.pid; \
-		sleep 2
 	@echo ""
 	@echo "🎉 All services started!"
 	@echo "📡 Services running:"
-	@echo "   • AuthN: http://localhost:8080 (authentication)"
-	@echo "   • AuthZ: http://localhost:8083 (authorization)"
+	@echo "   • Web: http://localhost:8080 (web interface)"
 	@echo "   • Admin: http://localhost:8081 (admin interface)"
+	@echo "   • AuthN: http://localhost:8082 (authentication)"
+	@echo "   • AuthZ: http://localhost:8083 (authorization)"
 	@echo "   • Ticked: http://localhost:8084 (todo lists)"
-	@echo "   • Web: http://localhost:8082 (web interface)"
 	@echo ""
 	@sleep 2
 	@$(MAKE) seed-test-user > /dev/null 2>&1 || true
@@ -151,10 +151,27 @@ run-fake: build
 	@echo "🚀 Starting Ticked services (fake driver)..."
 	@$(MAKE) stop > /dev/null 2>&1 || true
 	@echo ""
-	@echo "   📦 Starting AuthN on :8080..."
+	@echo "   📦 Starting Web on :8080..."
+	@cd services/web && \
+		export WEB_SERVER_PORT=:8080 && \
+		export WEB_SERVICES_AUTHN_URL=http://localhost:8082 && \
+		export WEB_SERVICES_TICKED_URL=http://localhost:8084 && \
+		export WEB_AUTH_SESSION_TTL=24h && \
+		nohup ./web > web.log 2>&1 & echo $$! > web.pid; \
+		sleep 2
+	@echo "   📦 Starting Admin on :8081..."
+	@cd services/admin && \
+		export ADMIN_DATABASE_DRIVER=fake && \
+		export ADMIN_SERVER_PORT=:8081 && \
+		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8082 && \
+		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
+		export ADMIN_PREFLIGHT_ENABLED=true && \
+		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
+		sleep 2
+	@echo "   📦 Starting AuthN on :8082..."
 	@cd services/authn && \
 		export AUTHN_DATABASE_DRIVER=fake && \
-		export AUTHN_SERVER_PORT=:8080 && \
+		export AUTHN_SERVER_PORT=:8082 && \
 		export AUTHN_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
 		export AUTHN_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
 		export AUTHN_CRYPTO_TOKENPRIVATEKEY=7uVnt+H8pqquyDWhzkPvfNNpJli0FV9kC2LvZbr/AVsjsdGZ0q5nUZVnDYtenONndtYjDhR9VFmYy5xH0w2/mg== && \
@@ -164,19 +181,10 @@ run-fake: build
 	@cd services/authz && \
 		export AUTHZ_DATABASE_DRIVER=fake && \
 		export AUTHZ_SERVER_PORT=:8083 && \
-		export AUTHZ_AUTHN_URL=http://localhost:8080 && \
+		export AUTHZ_AUTHN_URL=http://localhost:8082 && \
 		export AUTHZ_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
 		export AUTHZ_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
 		nohup ./authz > authz.log 2>&1 & echo $$! > authz.pid; \
-		sleep 2
-	@echo "   📦 Starting Admin on :8081..."
-	@cd services/admin && \
-		export ADMIN_DATABASE_DRIVER=fake && \
-		export ADMIN_SERVER_PORT=:8081 && \
-		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8080 && \
-		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
-		export ADMIN_PREFLIGHT_ENABLED=true && \
-		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
 		sleep 2
 	@echo "   📦 Starting Ticked on :8084..."
 	@cd services/ticked && \
@@ -184,22 +192,14 @@ run-fake: build
 		export TICKED_SERVER_PORT=:8084 && \
 		nohup ./ticked > ticked.log 2>&1 & echo $$! > ticked.pid; \
 		sleep 2
-	@echo "   📦 Starting Web on :8082..."
-	@cd services/web && \
-		export WEB_SERVER_PORT=:8082 && \
-		export WEB_SERVICES_AUTHN_URL=http://localhost:8080 && \
-		export WEB_SERVICES_TICKED_URL=http://localhost:8084 && \
-		export WEB_AUTH_SESSION_TTL=24h && \
-		nohup ./web > web.log 2>&1 & echo $$! > web.pid; \
-		sleep 2
 	@echo ""
 	@echo "🎉 All services started!"
 	@echo "📡 Services running:"
-	@echo "   • AuthN: http://localhost:8080 (authentication)"
-	@echo "   • AuthZ: http://localhost:8083 (authorization)"
+	@echo "   • Web: http://localhost:8080 (web interface)"
 	@echo "   • Admin: http://localhost:8081 (admin interface)"
+	@echo "   • AuthN: http://localhost:8082 (authentication)"
+	@echo "   • AuthZ: http://localhost:8083 (authorization)"
 	@echo "   • Ticked: http://localhost:8084 (todo lists)"
-	@echo "   • Web: http://localhost:8082 (web interface)"
 	@echo ""
 	@sleep 2
 	@$(MAKE) seed-test-user > /dev/null 2>&1 || true
@@ -327,7 +327,7 @@ db-reset: db-drop db-init
 seed-test-user:
 	@echo "👤 Creating test user..."
 	@command -v curl >/dev/null 2>&1 || { echo "❌ curl not found. Install curl."; exit 1; }
-	@curl -X POST http://localhost:8080/auth/signup \
+	@curl -X POST http://localhost:8082/auth/signup \
 		-H "Content-Type: application/json" \
 		-d '{"email":"test@example.com","password":"password123","username":"testuser","display_name":"Test User"}' \
 		-s -o /dev/null -w "%{http_code}" | grep -q "200" && echo "✅ Test user created: test@example.com / password123" || echo "⚠️  User may already exist or authn service not running"
