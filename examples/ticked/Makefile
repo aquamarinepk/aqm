@@ -75,7 +75,7 @@ run: build
 	@echo "🚀 Starting Ticked services..."
 	@$(MAKE) stop > /dev/null 2>&1 || true
 	@echo ""
-	@echo "   📦 Starting AuthN on :8082..."
+	@echo "   📦 Starting AuthN on :8080..."
 	@cd services/authn && \
 		export AUTHN_DATABASE_DRIVER=postgres && \
 		export AUTHN_DATABASE_HOST=$(DB_HOST) && \
@@ -83,7 +83,7 @@ run: build
 		export AUTHN_DATABASE_USER=$(DB_USER) && \
 		export AUTHN_DATABASE_PASSWORD=$(DB_PASS) && \
 		export AUTHN_DATABASE_NAME=$(DB_AUTHN) && \
-		export AUTHN_SERVER_PORT=:8082 && \
+		export AUTHN_SERVER_PORT=:8080 && \
 		export AUTHN_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
 		export AUTHN_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
 		export AUTHN_CRYPTO_TOKENPRIVATEKEY=mTn8gRo4YfobTBcc8zooULexXqUVWYa0LK7fE6r3lGM+1bhgC58dvsd/XgNwO6J8Eddw4ra+Q6SaPKocCZMJqA== && \
@@ -98,6 +98,7 @@ run: build
 		export AUTHZ_DATABASE_PASSWORD=$(DB_PASS) && \
 		export AUTHZ_DATABASE_NAME=$(DB_AUTHZ) && \
 		export AUTHZ_SERVER_PORT=:8083 && \
+		export AUTHZ_AUTHN_URL=http://localhost:8080 && \
 		export AUTHZ_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
 		export AUTHZ_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
 		nohup ./authz > authz.log 2>&1 & echo $$! > authz.pid; \
@@ -111,7 +112,7 @@ run: build
 		export ADMIN_DATABASE_PASSWORD=$(DB_PASS) && \
 		export ADMIN_DATABASE_NAME=$(DB_ADMIN) && \
 		export ADMIN_SERVER_PORT=:8081 && \
-		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8082 && \
+		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8080 && \
 		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
 		export ADMIN_PREFLIGHT_ENABLED=true && \
 		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
@@ -144,6 +145,9 @@ run: build
 	@echo "   • Ticked: http://localhost:8084 (todo lists)"
 	@echo "   • Web: http://localhost:8082 (web interface)"
 	@echo ""
+	@sleep 2
+	@$(MAKE) seed-test-user > /dev/null 2>&1 || true
+	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
 
@@ -152,10 +156,10 @@ run-fake: build
 	@echo "🚀 Starting Ticked services (fake driver)..."
 	@$(MAKE) stop > /dev/null 2>&1 || true
 	@echo ""
-	@echo "   📦 Starting AuthN on :8082..."
+	@echo "   📦 Starting AuthN on :8080..."
 	@cd services/authn && \
 		export AUTHN_DATABASE_DRIVER=fake && \
-		export AUTHN_SERVER_PORT=:8082 && \
+		export AUTHN_SERVER_PORT=:8080 && \
 		export AUTHN_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
 		export AUTHN_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
 		export AUTHN_CRYPTO_TOKENPRIVATEKEY=mTn8gRo4YfobTBcc8zooULexXqUVWYa0LK7fE6r3lGM+1bhgC58dvsd/XgNwO6J8Eddw4ra+Q6SaPKocCZMJqA== && \
@@ -165,6 +169,7 @@ run-fake: build
 	@cd services/authz && \
 		export AUTHZ_DATABASE_DRIVER=fake && \
 		export AUTHZ_SERVER_PORT=:8083 && \
+		export AUTHZ_AUTHN_URL=http://localhost:8080 && \
 		export AUTHZ_CRYPTO_ENCRYPTIONKEY=5a7ef65d69301801040016a99095149e7142397538eb88a87911335ab2bd0162 && \
 		export AUTHZ_CRYPTO_SIGNINGKEY=d366911810fe3ba6ee7f959a8dfec39cb541c3a0a47d1ba0d95675dd5af83c32 && \
 		nohup ./authz > authz.log 2>&1 & echo $$! > authz.pid; \
@@ -173,7 +178,7 @@ run-fake: build
 	@cd services/admin && \
 		export ADMIN_DATABASE_DRIVER=fake && \
 		export ADMIN_SERVER_PORT=:8081 && \
-		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8082 && \
+		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8080 && \
 		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
 		export ADMIN_PREFLIGHT_ENABLED=true && \
 		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
@@ -200,6 +205,9 @@ run-fake: build
 	@echo "   • Admin: http://localhost:8081 (admin interface)"
 	@echo "   • Ticked: http://localhost:8084 (todo lists)"
 	@echo "   • Web: http://localhost:8082 (web interface)"
+	@echo ""
+	@sleep 2
+	@$(MAKE) seed-test-user > /dev/null 2>&1 || true
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
