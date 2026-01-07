@@ -30,8 +30,8 @@ func (s *grantStore) Create(ctx context.Context, grant *auth.Grant) error {
 	return nil
 }
 
-func (s *grantStore) Delete(ctx context.Context, userID, roleID uuid.UUID) error {
-	filter := bson.M{"user_id": userID, "role_id": roleID}
+func (s *grantStore) Delete(ctx context.Context, username string, roleID uuid.UUID) error {
+	filter := bson.M{"username": username, "role_id": roleID}
 	result, err := s.grantsColl.DeleteOne(ctx, filter)
 	if err != nil {
 		return err
@@ -42,8 +42,8 @@ func (s *grantStore) Delete(ctx context.Context, userID, roleID uuid.UUID) error
 	return nil
 }
 
-func (s *grantStore) GetUserGrants(ctx context.Context, userID uuid.UUID) ([]*auth.Grant, error) {
-	filter := bson.M{"user_id": userID}
+func (s *grantStore) GetUserGrants(ctx context.Context, username string) ([]*auth.Grant, error) {
+	filter := bson.M{"username": username}
 	opts := options.Find().SetSort(bson.D{{Key: "assigned_at", Value: -1}})
 	cursor, err := s.grantsColl.Find(ctx, filter, opts)
 	if err != nil {
@@ -74,9 +74,9 @@ func (s *grantStore) GetRoleGrants(ctx context.Context, roleID uuid.UUID) ([]*au
 	return grants, nil
 }
 
-func (s *grantStore) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]*auth.Role, error) {
+func (s *grantStore) GetUserRoles(ctx context.Context, username string) ([]*auth.Role, error) {
 	// First get all grants for this user
-	filter := bson.M{"user_id": userID}
+	filter := bson.M{"username": username}
 	cursor, err := s.grantsColl.Find(ctx, filter)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (s *grantStore) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]*aut
 	return roles, nil
 }
 
-func (s *grantStore) HasRole(ctx context.Context, userID uuid.UUID, roleName string) (bool, error) {
+func (s *grantStore) HasRole(ctx context.Context, username string, roleName string) (bool, error) {
 	// First find the role by name
 	roleFilter := bson.M{"name": roleName}
 	role := &auth.Role{}
@@ -127,7 +127,7 @@ func (s *grantStore) HasRole(ctx context.Context, userID uuid.UUID, roleName str
 	}
 
 	// Check if grant exists
-	grantFilter := bson.M{"user_id": userID, "role_id": role.ID}
+	grantFilter := bson.M{"username": username, "role_id": role.ID}
 	count, err := s.grantsColl.CountDocuments(ctx, grantFilter, options.Count().SetLimit(1))
 	if err != nil {
 		return false, err

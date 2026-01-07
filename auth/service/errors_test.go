@@ -220,28 +220,28 @@ func TestAuthzNilParameters(t *testing.T) {
 	})
 
 	t.Run("AssignRole nil store", func(t *testing.T) {
-		_, err := AssignRole(ctx, nil, uuid.New(), uuid.New(), "user")
+		_, err := AssignRole(ctx, nil, "testuser", uuid.New(), "user")
 		if err == nil {
 			t.Error("AssignRole() with nil store should error")
 		}
 	})
 
 	t.Run("RevokeRole nil store", func(t *testing.T) {
-		err := RevokeRole(ctx, nil, uuid.New(), uuid.New())
+		err := RevokeRole(ctx, nil, "testuser", uuid.New())
 		if err == nil {
 			t.Error("RevokeRole() with nil store should error")
 		}
 	})
 
 	t.Run("GetUserRoles nil store", func(t *testing.T) {
-		_, err := GetUserRoles(ctx, nil, uuid.New())
+		_, err := GetUserRoles(ctx, nil, "testuser")
 		if err == nil {
 			t.Error("GetUserRoles() with nil store should error")
 		}
 	})
 
 	t.Run("GetUserGrants nil store", func(t *testing.T) {
-		_, err := GetUserGrants(ctx, nil, uuid.New())
+		_, err := GetUserGrants(ctx, nil, "testuser")
 		if err == nil {
 			t.Error("GetUserGrants() with nil store should error")
 		}
@@ -255,28 +255,28 @@ func TestAuthzNilParameters(t *testing.T) {
 	})
 
 	t.Run("CheckPermission nil store", func(t *testing.T) {
-		_, err := CheckPermission(ctx, nil, uuid.New(), "perm")
+		_, err := CheckPermission(ctx, nil, "testuser", "perm")
 		if err == nil {
 			t.Error("CheckPermission() with nil store should error")
 		}
 	})
 
 	t.Run("CheckAnyPermission nil store", func(t *testing.T) {
-		_, err := CheckAnyPermission(ctx, nil, uuid.New(), []string{"perm"})
+		_, err := CheckAnyPermission(ctx, nil, "testuser", []string{"perm"})
 		if err == nil {
 			t.Error("CheckAnyPermission() with nil store should error")
 		}
 	})
 
 	t.Run("CheckAllPermissions nil store", func(t *testing.T) {
-		_, err := CheckAllPermissions(ctx, nil, uuid.New(), []string{"perm"})
+		_, err := CheckAllPermissions(ctx, nil, "testuser", []string{"perm"})
 		if err == nil {
 			t.Error("CheckAllPermissions() with nil store should error")
 		}
 	})
 
 	t.Run("HasRole nil store", func(t *testing.T) {
-		_, err := HasRole(ctx, nil, uuid.New(), "role")
+		_, err := HasRole(ctx, nil, "testuser", "role")
 		if err == nil {
 			t.Error("HasRole() with nil store should error")
 		}

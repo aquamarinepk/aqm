@@ -229,25 +229,25 @@ func TestAssignRole(t *testing.T) {
 	ctx := context.Background()
 
 	role, _ := CreateRole(ctx, roleStore, "assignable", "Assignable", []string{"perm1"}, "system")
-	userID := uuid.New()
+	username := "testuser"
 
 	tests := []struct {
 		name       string
-		userID     uuid.UUID
+		username   string
 		roleID     uuid.UUID
 		assignedBy string
 		wantErr    bool
 	}{
 		{
 			name:       "valid assignment",
-			userID:     userID,
+			username:   username,
 			roleID:     role.ID,
 			assignedBy: "admin",
 			wantErr:    false,
 		},
 		{
 			name:       "duplicate assignment",
-			userID:     userID,
+			username:   username,
 			roleID:     role.ID,
 			assignedBy: "admin",
 			wantErr:    true,
@@ -256,7 +256,7 @@ func TestAssignRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			grant, err := AssignRole(ctx, grantStore, tt.userID, tt.roleID, tt.assignedBy)
+			grant, err := AssignRole(ctx, grantStore, tt.username, tt.roleID, tt.assignedBy)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssignRole() error = %v, wantErr %v", err, tt.wantErr)
@@ -267,8 +267,8 @@ func TestAssignRole(t *testing.T) {
 				if grant == nil {
 					t.Error("AssignRole() returned nil grant")
 				}
-				if grant.UserID != tt.userID {
-					t.Errorf("AssignRole() userID = %v, want %v", grant.UserID, tt.userID)
+				if grant.Username != tt.username {
+					t.Errorf("AssignRole() userID = %v, want %v", grant.Username, tt.username)
 				}
 				if grant.RoleID != tt.roleID {
 					t.Errorf("AssignRole() roleID = %v, want %v", grant.RoleID, tt.roleID)
@@ -284,15 +284,15 @@ func TestRevokeRole(t *testing.T) {
 	ctx := context.Background()
 
 	role, _ := CreateRole(ctx, roleStore, "revokable", "Revokable", []string{"perm1"}, "system")
-	userID := uuid.New()
-	AssignRole(ctx, grantStore, userID, role.ID, "admin")
+	username := "testuser"
+	AssignRole(ctx, grantStore, username, role.ID, "admin")
 
-	err := RevokeRole(ctx, grantStore, userID, role.ID)
+	err := RevokeRole(ctx, grantStore, username, role.ID)
 	if err != nil {
 		t.Fatalf("RevokeRole() error = %v", err)
 	}
 
-	has, _ := HasRole(ctx, grantStore, userID, "revokable")
+	has, _ := HasRole(ctx, grantStore, username, "revokable")
 	if has {
 		t.Error("RevokeRole() role still assigned after revocation")
 	}
@@ -305,12 +305,12 @@ func TestGetUserRoles(t *testing.T) {
 
 	role1, _ := CreateRole(ctx, roleStore, "role1", "Role 1", []string{"perm1"}, "system")
 	role2, _ := CreateRole(ctx, roleStore, "role2", "Role 2", []string{"perm2"}, "system")
-	userID := uuid.New()
+	username := "testuser"
 
-	AssignRole(ctx, grantStore, userID, role1.ID, "admin")
-	AssignRole(ctx, grantStore, userID, role2.ID, "admin")
+	AssignRole(ctx, grantStore, username, role1.ID, "admin")
+	AssignRole(ctx, grantStore, username, role2.ID, "admin")
 
-	roles, err := GetUserRoles(ctx, grantStore, userID)
+	roles, err := GetUserRoles(ctx, grantStore, username)
 	if err != nil {
 		t.Fatalf("GetUserRoles() error = %v", err)
 	}
@@ -326,10 +326,10 @@ func TestGetUserGrants(t *testing.T) {
 	ctx := context.Background()
 
 	role, _ := CreateRole(ctx, roleStore, "test", "Test", []string{"perm1"}, "system")
-	userID := uuid.New()
-	AssignRole(ctx, grantStore, userID, role.ID, "admin")
+	username := "testuser"
+	AssignRole(ctx, grantStore, username, role.ID, "admin")
 
-	grants, err := GetUserGrants(ctx, grantStore, userID)
+	grants, err := GetUserGrants(ctx, grantStore, username)
 	if err != nil {
 		t.Fatalf("GetUserGrants() error = %v", err)
 	}
@@ -345,8 +345,8 @@ func TestGetRoleGrants(t *testing.T) {
 	ctx := context.Background()
 
 	role, _ := CreateRole(ctx, roleStore, "popular", "Popular", []string{"perm1"}, "system")
-	user1 := uuid.New()
-	user2 := uuid.New()
+	user1 := "testuser1"
+	user2 := "testuser2"
 
 	AssignRole(ctx, grantStore, user1, role.ID, "admin")
 	AssignRole(ctx, grantStore, user2, role.ID, "admin")
@@ -367,8 +367,8 @@ func TestCheckPermission(t *testing.T) {
 	ctx := context.Background()
 
 	role, _ := CreateRole(ctx, roleStore, "perms", "Permissions", []string{"users:read", "users:write"}, "system")
-	userID := uuid.New()
-	AssignRole(ctx, grantStore, userID, role.ID, "admin")
+	username := "testuser"
+	AssignRole(ctx, grantStore, username, role.ID, "admin")
 
 	tests := []struct {
 		name       string
@@ -389,7 +389,7 @@ func TestCheckPermission(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CheckPermission(ctx, grantStore, userID, tt.permission)
+			got, err := CheckPermission(ctx, grantStore, username, tt.permission)
 			if err != nil {
 				t.Fatalf("CheckPermission() error = %v", err)
 			}
@@ -402,7 +402,7 @@ func TestCheckPermission(t *testing.T) {
 
 	// Test with deleted role
 	DeleteRole(ctx, roleStore, role.ID)
-	got, err := CheckPermission(ctx, grantStore, userID, "users:read")
+	got, err := CheckPermission(ctx, grantStore, username, "users:read")
 	if err != nil {
 		t.Fatalf("CheckPermission() with deleted role error = %v", err)
 	}
@@ -417,8 +417,8 @@ func TestCheckAnyPermission(t *testing.T) {
 	ctx := context.Background()
 
 	role, _ := CreateRole(ctx, roleStore, "multi", "Multi", []string{"users:read", "content:write"}, "system")
-	userID := uuid.New()
-	AssignRole(ctx, grantStore, userID, role.ID, "admin")
+	username := "testuser"
+	AssignRole(ctx, grantStore, username, role.ID, "admin")
 
 	tests := []struct {
 		name        string
@@ -439,7 +439,7 @@ func TestCheckAnyPermission(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CheckAnyPermission(ctx, grantStore, userID, tt.permissions)
+			got, err := CheckAnyPermission(ctx, grantStore, username, tt.permissions)
 			if err != nil {
 				t.Fatalf("CheckAnyPermission() error = %v", err)
 			}
@@ -452,7 +452,7 @@ func TestCheckAnyPermission(t *testing.T) {
 
 	// Test with deleted role
 	DeleteRole(ctx, roleStore, role.ID)
-	got, err := CheckAnyPermission(ctx, grantStore, userID, []string{"users:read"})
+	got, err := CheckAnyPermission(ctx, grantStore, username, []string{"users:read"})
 	if err != nil {
 		t.Fatalf("CheckAnyPermission() with deleted role error = %v", err)
 	}
@@ -467,8 +467,8 @@ func TestCheckAllPermissions(t *testing.T) {
 	ctx := context.Background()
 
 	role, _ := CreateRole(ctx, roleStore, "complete", "Complete", []string{"users:read", "users:write", "content:read"}, "system")
-	userID := uuid.New()
-	AssignRole(ctx, grantStore, userID, role.ID, "admin")
+	username := "testuser"
+	AssignRole(ctx, grantStore, username, role.ID, "admin")
 
 	tests := []struct {
 		name        string
@@ -489,7 +489,7 @@ func TestCheckAllPermissions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CheckAllPermissions(ctx, grantStore, userID, tt.permissions)
+			got, err := CheckAllPermissions(ctx, grantStore, username, tt.permissions)
 			if err != nil {
 				t.Fatalf("CheckAllPermissions() error = %v", err)
 			}
@@ -502,7 +502,7 @@ func TestCheckAllPermissions(t *testing.T) {
 
 	// Test with deleted role
 	DeleteRole(ctx, roleStore, role.ID)
-	got, err := CheckAllPermissions(ctx, grantStore, userID, []string{"users:read"})
+	got, err := CheckAllPermissions(ctx, grantStore, username, []string{"users:read"})
 	if err != nil {
 		t.Fatalf("CheckAllPermissions() with deleted role error = %v", err)
 	}
@@ -517,8 +517,8 @@ func TestHasRole(t *testing.T) {
 	ctx := context.Background()
 
 	role, _ := CreateRole(ctx, roleStore, "checker", "Checker", []string{"check:perm"}, "system")
-	userID := uuid.New()
-	AssignRole(ctx, grantStore, userID, role.ID, "admin")
+	username := "testuser"
+	AssignRole(ctx, grantStore, username, role.ID, "admin")
 
 	tests := []struct {
 		name     string
@@ -539,7 +539,7 @@ func TestHasRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := HasRole(ctx, grantStore, userID, tt.roleName)
+			got, err := HasRole(ctx, grantStore, username, tt.roleName)
 			if err != nil {
 				t.Fatalf("HasRole() error = %v", err)
 			}

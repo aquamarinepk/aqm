@@ -294,14 +294,14 @@ func TestSeeder_SeedGrant(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		setupFunc  func(ctx context.Context, seeder *Seeder) (userID, roleID uuid.UUID)
+		setupFunc  func(ctx context.Context, seeder *Seeder) (username string, roleID uuid.UUID)
 		assignedBy string
 		wantErr    bool
-		checkFunc  func(t *testing.T, grant *auth.Grant, userID, roleID uuid.UUID)
+		checkFunc  func(t *testing.T, grant *auth.Grant, username string, roleID uuid.UUID)
 	}{
 		{
 			name: "valid grant",
-			setupFunc: func(ctx context.Context, seeder *Seeder) (uuid.UUID, uuid.UUID) {
+			setupFunc: func(ctx context.Context, seeder *Seeder) (string, uuid.UUID) {
 				user, _ := seeder.SeedUser(ctx, UserInput{
 					Username:  "testuser",
 					Name:      "Test User",
@@ -314,13 +314,13 @@ func TestSeeder_SeedGrant(t *testing.T) {
 					Description: "Admin role",
 					CreatedBy:   "system",
 				})
-				return user.ID, role.ID
+				return user.Username, role.ID
 			},
 			assignedBy: "system",
 			wantErr:    false,
-			checkFunc: func(t *testing.T, grant *auth.Grant, userID, roleID uuid.UUID) {
-				if grant.UserID != userID {
-					t.Errorf("expected user_id=%s, got=%s", userID, grant.UserID)
+			checkFunc: func(t *testing.T, grant *auth.Grant, username string, roleID uuid.UUID) {
+				if grant.Username != username {
+					t.Errorf("expected username=%s, got=%s", username, grant.Username)
 				}
 				if grant.RoleID != roleID {
 					t.Errorf("expected role_id=%s, got=%s", roleID, grant.RoleID)
@@ -337,21 +337,21 @@ func TestSeeder_SeedGrant(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid user ID",
-			setupFunc: func(ctx context.Context, seeder *Seeder) (uuid.UUID, uuid.UUID) {
+			name: "empty username",
+			setupFunc: func(ctx context.Context, seeder *Seeder) (string, uuid.UUID) {
 				role, _ := seeder.SeedRole(ctx, RoleInput{
 					Name:        "admin",
 					Description: "Admin role",
 					CreatedBy:   "system",
 				})
-				return uuid.Nil, role.ID
+				return "", role.ID
 			},
 			assignedBy: "system",
 			wantErr:    true,
 		},
 		{
 			name: "invalid role ID",
-			setupFunc: func(ctx context.Context, seeder *Seeder) (uuid.UUID, uuid.UUID) {
+			setupFunc: func(ctx context.Context, seeder *Seeder) (string, uuid.UUID) {
 				user, _ := seeder.SeedUser(ctx, UserInput{
 					Username:  "testuser",
 					Name:      "Test User",
@@ -359,14 +359,14 @@ func TestSeeder_SeedGrant(t *testing.T) {
 					Password:  "TestPass123!",
 					CreatedBy: "system",
 				})
-				return user.ID, uuid.Nil
+				return user.Username, uuid.Nil
 			},
 			assignedBy: "system",
 			wantErr:    true,
 		},
 		{
 			name: "empty assigned by",
-			setupFunc: func(ctx context.Context, seeder *Seeder) (uuid.UUID, uuid.UUID) {
+			setupFunc: func(ctx context.Context, seeder *Seeder) (string, uuid.UUID) {
 				user, _ := seeder.SeedUser(ctx, UserInput{
 					Username:  "testuser",
 					Name:      "Test User",
@@ -379,14 +379,14 @@ func TestSeeder_SeedGrant(t *testing.T) {
 					Description: "Admin role",
 					CreatedBy:   "system",
 				})
-				return user.ID, role.ID
+				return user.Username, role.ID
 			},
 			assignedBy: "",
 			wantErr:    true,
 		},
 		{
 			name: "duplicate grant",
-			setupFunc: func(ctx context.Context, seeder *Seeder) (uuid.UUID, uuid.UUID) {
+			setupFunc: func(ctx context.Context, seeder *Seeder) (string, uuid.UUID) {
 				user, _ := seeder.SeedUser(ctx, UserInput{
 					Username:  "testuser",
 					Name:      "Test User",
@@ -401,12 +401,12 @@ func TestSeeder_SeedGrant(t *testing.T) {
 				})
 
 				_, _ = seeder.SeedGrant(ctx, GrantInput{
-					UserID:     user.ID,
+					Username:   user.Username,
 					RoleID:     role.ID,
 					AssignedBy: "system",
 				})
 
-				return user.ID, role.ID
+				return user.Username, role.ID
 			},
 			assignedBy: "system",
 			wantErr:    true,
@@ -425,10 +425,10 @@ func TestSeeder_SeedGrant(t *testing.T) {
 			}
 			seeder := New(userStore, roleStore, grantStore, cfg, log.NewNoopLogger())
 
-			userID, roleID := tt.setupFunc(context.Background(), seeder)
+			username, roleID := tt.setupFunc(context.Background(), seeder)
 
 			grant, err := seeder.SeedGrant(context.Background(), GrantInput{
-				UserID:     userID,
+				Username:   username,
 				RoleID:     roleID,
 				AssignedBy: tt.assignedBy,
 			})
@@ -439,7 +439,7 @@ func TestSeeder_SeedGrant(t *testing.T) {
 			}
 
 			if !tt.wantErr && tt.checkFunc != nil {
-				tt.checkFunc(t, grant, userID, roleID)
+				tt.checkFunc(t, grant, username, roleID)
 			}
 		})
 	}

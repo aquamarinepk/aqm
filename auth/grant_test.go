@@ -7,11 +7,11 @@ import (
 )
 
 func TestNewGrant(t *testing.T) {
-	userID := uuid.New()
+	username := "testuser"
 	roleID := uuid.New()
 	assignedBy := "admin"
 
-	grant := NewGrant(userID, roleID, assignedBy)
+	grant := NewGrant(username, roleID, assignedBy)
 
 	if grant == nil {
 		t.Fatal("NewGrant() returned nil")
@@ -19,8 +19,8 @@ func TestNewGrant(t *testing.T) {
 	if grant.ID == uuid.Nil {
 		t.Error("NewGrant() did not generate ID")
 	}
-	if grant.UserID != userID {
-		t.Errorf("NewGrant() userID = %v, want %v", grant.UserID, userID)
+	if grant.Username != username {
+		t.Errorf("NewGrant() username = %v, want %v", grant.Username, username)
 	}
 	if grant.RoleID != roleID {
 		t.Errorf("NewGrant() roleID = %v, want %v", grant.RoleID, roleID)
@@ -34,7 +34,6 @@ func TestNewGrant(t *testing.T) {
 }
 
 func TestGrantValidate(t *testing.T) {
-	userID := uuid.New()
 	roleID := uuid.New()
 
 	tests := []struct {
@@ -44,22 +43,22 @@ func TestGrantValidate(t *testing.T) {
 	}{
 		{
 			"valid grant",
-			&Grant{UserID: userID, RoleID: roleID, AssignedBy: "admin"},
+			&Grant{Username: "testuser", RoleID: roleID, AssignedBy: "admin"},
 			false,
 		},
 		{
-			"missing user ID",
-			&Grant{UserID: uuid.Nil, RoleID: roleID, AssignedBy: "admin"},
+			"missing username",
+			&Grant{Username: "", RoleID: roleID, AssignedBy: "admin"},
 			true,
 		},
 		{
 			"missing role ID",
-			&Grant{UserID: userID, RoleID: uuid.Nil, AssignedBy: "admin"},
+			&Grant{Username: "testuser", RoleID: uuid.Nil, AssignedBy: "admin"},
 			true,
 		},
 		{
 			"missing assigned by",
-			&Grant{UserID: userID, RoleID: roleID, AssignedBy: ""},
+			&Grant{Username: "testuser", RoleID: roleID, AssignedBy: ""},
 			true,
 		},
 	}

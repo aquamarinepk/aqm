@@ -8,7 +8,6 @@ import (
 
 	"github.com/aquamarinepk/aqm/auth"
 	"github.com/aquamarinepk/aqm/auth/fake"
-	"github.com/google/uuid"
 )
 
 func TestAuthzChecker_HasRole(t *testing.T) {
@@ -21,43 +20,43 @@ func TestAuthzChecker_HasRole(t *testing.T) {
 	adminRole.BeforeCreate()
 	_ = roleStore.Create(context.Background(), adminRole)
 
-	userID := uuid.New()
-	grant := auth.NewGrant(userID, adminRole.ID, "system")
+	username := "testuser"
+	grant := auth.NewGrant(username, adminRole.ID, "system")
 	_ = grantStore.Create(context.Background(), grant)
 
 	checker := NewAuthzChecker(grantStore)
 
 	tests := []struct {
 		name     string
-		userID   string
+		username string
 		roleName string
 		want     bool
 		wantErr  bool
 	}{
 		{
 			name:     "user has role",
-			userID:   userID.String(),
+			username: username,
 			roleName: "admin",
 			want:     true,
 			wantErr:  false,
 		},
 		{
 			name:     "user does not have role",
-			userID:   userID.String(),
+			username: username,
 			roleName: "editor",
 			want:     false,
 			wantErr:  false,
 		},
 		{
-			name:     "invalid user ID",
-			userID:   "invalid-uuid",
+			name:     "empty username",
+			username: "",
 			roleName: "admin",
 			want:     false,
-			wantErr:  true,
+			wantErr:  false,
 		},
 		{
 			name:     "nonexistent user",
-			userID:   uuid.New().String(),
+			username: "nonexistent",
 			roleName: "admin",
 			want:     false,
 			wantErr:  false,
@@ -66,7 +65,7 @@ func TestAuthzChecker_HasRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := checker.HasRole(context.Background(), tt.userID, tt.roleName)
+			got, err := checker.HasRole(context.Background(), tt.username, tt.roleName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("HasRole() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -89,45 +88,45 @@ func TestAuthzChecker_CheckPermission(t *testing.T) {
 	adminRole.BeforeCreate()
 	_ = roleStore.Create(context.Background(), adminRole)
 
-	userID := uuid.New()
-	grant := auth.NewGrant(userID, adminRole.ID, "system")
+	username := "testuser"
+	grant := auth.NewGrant(username, adminRole.ID, "system")
 	_ = grantStore.Create(context.Background(), grant)
 
 	checker := NewAuthzChecker(grantStore)
 
 	tests := []struct {
 		name       string
-		userID     string
+		username   string
 		permission string
 		want       bool
 		wantErr    bool
 	}{
 		{
 			name:       "user has permission",
-			userID:     userID.String(),
+			username:   username,
 			permission: "users:read",
 			want:       true,
 			wantErr:    false,
 		},
 		{
 			name:       "user does not have permission",
-			userID:     userID.String(),
+			username:   username,
 			permission: "posts:delete",
 			want:       false,
 			wantErr:    false,
 		},
 		{
-			name:       "invalid user ID",
-			userID:     "invalid-uuid",
+			name:       "empty username",
+			username:   "",
 			permission: "users:read",
 			want:       false,
-			wantErr:    true,
+			wantErr:    false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := checker.CheckPermission(context.Background(), tt.userID, tt.permission)
+			got, err := checker.CheckPermission(context.Background(), tt.username, tt.permission)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckPermission() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -150,52 +149,52 @@ func TestAuthzChecker_CheckAnyPermission(t *testing.T) {
 	adminRole.BeforeCreate()
 	_ = roleStore.Create(context.Background(), adminRole)
 
-	userID := uuid.New()
-	grant := auth.NewGrant(userID, adminRole.ID, "system")
+	username := "testuser"
+	grant := auth.NewGrant(username, adminRole.ID, "system")
 	_ = grantStore.Create(context.Background(), grant)
 
 	checker := NewAuthzChecker(grantStore)
 
 	tests := []struct {
 		name        string
-		userID      string
+		username    string
 		permissions []string
 		want        bool
 		wantErr     bool
 	}{
 		{
 			name:        "user has one of the permissions",
-			userID:      userID.String(),
+			username:    username,
 			permissions: []string{"users:read", "posts:read"},
 			want:        true,
 			wantErr:     false,
 		},
 		{
 			name:        "user has all permissions",
-			userID:      userID.String(),
+			username:    username,
 			permissions: []string{"users:read", "users:write"},
 			want:        true,
 			wantErr:     false,
 		},
 		{
 			name:        "user has none of the permissions",
-			userID:      userID.String(),
+			username:    username,
 			permissions: []string{"posts:read", "posts:write"},
 			want:        false,
 			wantErr:     false,
 		},
 		{
-			name:        "invalid user ID",
-			userID:      "invalid-uuid",
+			name:        "empty username",
+			username:    "",
 			permissions: []string{"users:read"},
 			want:        false,
-			wantErr:     true,
+			wantErr:     false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := checker.CheckAnyPermission(context.Background(), tt.userID, tt.permissions)
+			got, err := checker.CheckAnyPermission(context.Background(), tt.username, tt.permissions)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckAnyPermission() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -218,52 +217,52 @@ func TestAuthzChecker_CheckAllPermissions(t *testing.T) {
 	adminRole.BeforeCreate()
 	_ = roleStore.Create(context.Background(), adminRole)
 
-	userID := uuid.New()
-	grant := auth.NewGrant(userID, adminRole.ID, "system")
+	username := "testuser"
+	grant := auth.NewGrant(username, adminRole.ID, "system")
 	_ = grantStore.Create(context.Background(), grant)
 
 	checker := NewAuthzChecker(grantStore)
 
 	tests := []struct {
 		name        string
-		userID      string
+		username    string
 		permissions []string
 		want        bool
 		wantErr     bool
 	}{
 		{
 			name:        "user has all permissions",
-			userID:      userID.String(),
+			username:    username,
 			permissions: []string{"users:read", "users:write"},
 			want:        true,
 			wantErr:     false,
 		},
 		{
 			name:        "user missing one permission",
-			userID:      userID.String(),
+			username:    username,
 			permissions: []string{"users:read", "posts:write"},
 			want:        false,
 			wantErr:     false,
 		},
 		{
 			name:        "user has none of the permissions",
-			userID:      userID.String(),
+			username:    username,
 			permissions: []string{"comments:read", "comments:write"},
 			want:        false,
 			wantErr:     false,
 		},
 		{
-			name:        "invalid user ID",
-			userID:      "invalid-uuid",
+			name:        "empty username",
+			username:    "",
 			permissions: []string{"users:read"},
 			want:        false,
-			wantErr:     true,
+			wantErr:     false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := checker.CheckAllPermissions(context.Background(), tt.userID, tt.permissions)
+			got, err := checker.CheckAllPermissions(context.Background(), tt.username, tt.permissions)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckAllPermissions() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -302,35 +301,35 @@ func (f *fakeRoleChecker) CheckAllPermissions(ctx context.Context, userID string
 func TestRequireRole(t *testing.T) {
 	tests := []struct {
 		name           string
-		userID         string
+		username       string
 		hasRole        bool
 		err            error
 		expectedStatus int
 	}{
 		{
 			name:           "user has required role",
-			userID:         uuid.New().String(),
+			username:       "testuser",
 			hasRole:        true,
 			err:            nil,
 			expectedStatus: http.StatusOK,
 		},
 		{
 			name:           "user does not have required role",
-			userID:         uuid.New().String(),
+			username:       "testuser",
 			hasRole:        false,
 			err:            nil,
 			expectedStatus: http.StatusForbidden,
 		},
 		{
-			name:           "no user ID in context",
-			userID:         "",
+			name:           "no username in context",
+			username:       "",
 			hasRole:        false,
 			err:            nil,
 			expectedStatus: http.StatusUnauthorized,
 		},
 		{
 			name:           "role checker error",
-			userID:         uuid.New().String(),
+			username:       "testuser",
 			hasRole:        false,
 			err:            http.ErrServerClosed,
 			expectedStatus: http.StatusInternalServerError,
@@ -349,8 +348,8 @@ func TestRequireRole(t *testing.T) {
 			}))
 
 			req := httptest.NewRequest("GET", "/test", nil)
-			if tt.userID != "" {
-				ctx := context.WithValue(req.Context(), UserIDKey, tt.userID)
+			if tt.username != "" {
+				ctx := context.WithValue(req.Context(), UserIDKey, tt.username)
 				req = req.WithContext(ctx)
 			}
 
@@ -367,35 +366,35 @@ func TestRequireRole(t *testing.T) {
 func TestRequirePermission(t *testing.T) {
 	tests := []struct {
 		name            string
-		userID          string
+		username        string
 		checkPermission bool
 		err             error
 		expectedStatus  int
 	}{
 		{
 			name:            "user has required permission",
-			userID:          uuid.New().String(),
+			username:        "testuser",
 			checkPermission: true,
 			err:             nil,
 			expectedStatus:  http.StatusOK,
 		},
 		{
 			name:            "user does not have required permission",
-			userID:          uuid.New().String(),
+			username:        "testuser",
 			checkPermission: false,
 			err:             nil,
 			expectedStatus:  http.StatusForbidden,
 		},
 		{
-			name:            "no user ID in context",
-			userID:          "",
+			name:            "no username in context",
+			username:        "",
 			checkPermission: false,
 			err:             nil,
 			expectedStatus:  http.StatusUnauthorized,
 		},
 		{
 			name:            "permission checker error",
-			userID:          uuid.New().String(),
+			username:        "testuser",
 			checkPermission: false,
 			err:             http.ErrServerClosed,
 			expectedStatus:  http.StatusInternalServerError,
@@ -414,8 +413,8 @@ func TestRequirePermission(t *testing.T) {
 			}))
 
 			req := httptest.NewRequest("GET", "/test", nil)
-			if tt.userID != "" {
-				ctx := context.WithValue(req.Context(), UserIDKey, tt.userID)
+			if tt.username != "" {
+				ctx := context.WithValue(req.Context(), UserIDKey, tt.username)
 				req = req.WithContext(ctx)
 			}
 
@@ -432,35 +431,35 @@ func TestRequirePermission(t *testing.T) {
 func TestRequireAnyPermission(t *testing.T) {
 	tests := []struct {
 		name               string
-		userID             string
+		username           string
 		checkAnyPermission bool
 		err                error
 		expectedStatus     int
 	}{
 		{
 			name:               "user has one of the required permissions",
-			userID:             uuid.New().String(),
+			username:           "testuser",
 			checkAnyPermission: true,
 			err:                nil,
 			expectedStatus:     http.StatusOK,
 		},
 		{
 			name:               "user has none of the required permissions",
-			userID:             uuid.New().String(),
+			username:           "testuser",
 			checkAnyPermission: false,
 			err:                nil,
 			expectedStatus:     http.StatusForbidden,
 		},
 		{
-			name:               "no user ID in context",
-			userID:             "",
+			name:               "no username in context",
+			username:           "",
 			checkAnyPermission: false,
 			err:                nil,
 			expectedStatus:     http.StatusUnauthorized,
 		},
 		{
 			name:               "permission checker error",
-			userID:             uuid.New().String(),
+			username:           "testuser",
 			checkAnyPermission: false,
 			err:                http.ErrServerClosed,
 			expectedStatus:     http.StatusInternalServerError,
@@ -479,8 +478,8 @@ func TestRequireAnyPermission(t *testing.T) {
 			}))
 
 			req := httptest.NewRequest("GET", "/test", nil)
-			if tt.userID != "" {
-				ctx := context.WithValue(req.Context(), UserIDKey, tt.userID)
+			if tt.username != "" {
+				ctx := context.WithValue(req.Context(), UserIDKey, tt.username)
 				req = req.WithContext(ctx)
 			}
 
@@ -497,35 +496,35 @@ func TestRequireAnyPermission(t *testing.T) {
 func TestRequireAllPermissions(t *testing.T) {
 	tests := []struct {
 		name                string
-		userID              string
+		username            string
 		checkAllPermissions bool
 		err                 error
 		expectedStatus      int
 	}{
 		{
 			name:                "user has all required permissions",
-			userID:              uuid.New().String(),
+			username:            "testuser",
 			checkAllPermissions: true,
 			err:                 nil,
 			expectedStatus:      http.StatusOK,
 		},
 		{
 			name:                "user missing some required permissions",
-			userID:              uuid.New().String(),
+			username:            "testuser",
 			checkAllPermissions: false,
 			err:                 nil,
 			expectedStatus:      http.StatusForbidden,
 		},
 		{
-			name:                "no user ID in context",
-			userID:              "",
+			name:                "no username in context",
+			username:            "",
 			checkAllPermissions: false,
 			err:                 nil,
 			expectedStatus:      http.StatusUnauthorized,
 		},
 		{
 			name:                "permission checker error",
-			userID:              uuid.New().String(),
+			username:            "testuser",
 			checkAllPermissions: false,
 			err:                 http.ErrServerClosed,
 			expectedStatus:      http.StatusInternalServerError,
@@ -544,8 +543,8 @@ func TestRequireAllPermissions(t *testing.T) {
 			}))
 
 			req := httptest.NewRequest("GET", "/test", nil)
-			if tt.userID != "" {
-				ctx := context.WithValue(req.Context(), UserIDKey, tt.userID)
+			if tt.username != "" {
+				ctx := context.WithValue(req.Context(), UserIDKey, tt.username)
 				req = req.WithContext(ctx)
 			}
 

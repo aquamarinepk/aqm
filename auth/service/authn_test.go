@@ -448,16 +448,16 @@ func TestAssignRoleErrors(t *testing.T) {
 	ctx := context.Background()
 
 	role, _ := CreateRole(ctx, roleStore, "tester", "Tester", []string{"test"}, "system")
-	userID := uuid.New()
+	username := "testuser"
 
 	// First assignment succeeds
-	_, err := AssignRole(ctx, grantStore, userID, role.ID, "admin")
+	_, err := AssignRole(ctx, grantStore, username, role.ID, "admin")
 	if err != nil {
 		t.Fatalf("First AssignRole() error = %v", err)
 	}
 
 	// Second assignment should fail
-	_, err = AssignRole(ctx, grantStore, userID, role.ID, "admin")
+	_, err = AssignRole(ctx, grantStore, username, role.ID, "admin")
 	if err == nil {
 		t.Error("Second AssignRole() should fail with duplicate error")
 	}

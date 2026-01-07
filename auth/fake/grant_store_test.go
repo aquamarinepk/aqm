@@ -36,8 +36,8 @@ func TestGrantStore_Create(t *testing.T) {
 				return nil
 			},
 			grant: &auth.Grant{
-				UserID: uuid.New(),
-				RoleID: uuid.New(),
+				Username: "testuser",
+				RoleID:   uuid.New(),
 			},
 			wantErr: false,
 		},
@@ -45,8 +45,8 @@ func TestGrantStore_Create(t *testing.T) {
 			name: "duplicate grant",
 			setup: func(s *GrantStore) *auth.Grant {
 				grant := &auth.Grant{
-					UserID: uuid.New(),
-					RoleID: uuid.New(),
+					Username: "testuser",
+					RoleID:   uuid.New(),
 				}
 				_ = s.Create(context.Background(), grant)
 				return grant
@@ -81,27 +81,27 @@ func TestGrantStore_Create(t *testing.T) {
 func TestGrantStore_Delete(t *testing.T) {
 	tests := []struct {
 		name    string
-		setup   func(*GrantStore) (uuid.UUID, uuid.UUID)
+		setup   func(*GrantStore) (string, uuid.UUID)
 		wantErr bool
 	}{
 		{
 			name: "delete existing grant",
-			setup: func(s *GrantStore) (uuid.UUID, uuid.UUID) {
-				userID := uuid.New()
+			setup: func(s *GrantStore) (string, uuid.UUID) {
+				username := "testuser"
 				roleID := uuid.New()
 				grant := &auth.Grant{
-					UserID: userID,
-					RoleID: roleID,
+					Username: username,
+					RoleID:   roleID,
 				}
 				_ = s.Create(context.Background(), grant)
-				return userID, roleID
+				return username, roleID
 			},
 			wantErr: false,
 		},
 		{
 			name: "delete nonexistent grant",
-			setup: func(s *GrantStore) (uuid.UUID, uuid.UUID) {
-				return uuid.New(), uuid.New()
+			setup: func(s *GrantStore) (string, uuid.UUID) {
+				return "nonexistent", uuid.New()
 			},
 			wantErr: true,
 		},
@@ -111,9 +111,9 @@ func TestGrantStore_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			roleStore := NewRoleStore()
 			store := NewGrantStore(roleStore)
-			userID, roleID := tt.setup(store)
+			username, roleID := tt.setup(store)
 
-			err := store.Delete(context.Background(), userID, roleID)
+			err := store.Delete(context.Background(), username, roleID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -125,16 +125,16 @@ func TestGrantStore_GetUserGrants(t *testing.T) {
 	roleStore := NewRoleStore()
 	store := NewGrantStore(roleStore)
 
-	userID := uuid.New()
-	grant1 := &auth.Grant{UserID: userID, RoleID: uuid.New()}
-	grant2 := &auth.Grant{UserID: userID, RoleID: uuid.New()}
-	otherGrant := &auth.Grant{UserID: uuid.New(), RoleID: uuid.New()}
+	username := "testuser"
+	grant1 := &auth.Grant{Username: username, RoleID: uuid.New()}
+	grant2 := &auth.Grant{Username: username, RoleID: uuid.New()}
+	otherGrant := &auth.Grant{Username: "otheruser", RoleID: uuid.New()}
 
 	_ = store.Create(context.Background(), grant1)
 	_ = store.Create(context.Background(), grant2)
 	_ = store.Create(context.Background(), otherGrant)
 
-	grants, err := store.GetUserGrants(context.Background(), userID)
+	grants, err := store.GetUserGrants(context.Background(), username)
 	if err != nil {
 		t.Fatalf("GetUserGrants() error = %v", err)
 	}
@@ -148,9 +148,9 @@ func TestGrantStore_GetRoleGrants(t *testing.T) {
 	store := NewGrantStore(roleStore)
 
 	roleID := uuid.New()
-	grant1 := &auth.Grant{UserID: uuid.New(), RoleID: roleID}
-	grant2 := &auth.Grant{UserID: uuid.New(), RoleID: roleID}
-	otherGrant := &auth.Grant{UserID: uuid.New(), RoleID: uuid.New()}
+	grant1 := &auth.Grant{Username: "user1", RoleID: roleID}
+	grant2 := &auth.Grant{Username: "user2", RoleID: roleID}
+	otherGrant := &auth.Grant{Username: "user3", RoleID: uuid.New()}
 
 	_ = store.Create(context.Background(), grant1)
 	_ = store.Create(context.Background(), grant2)
@@ -174,13 +174,13 @@ func TestGrantStore_GetUserRoles(t *testing.T) {
 	_ = roleStore.Create(context.Background(), role1)
 	_ = roleStore.Create(context.Background(), role2)
 
-	userID := uuid.New()
-	grant1 := &auth.Grant{UserID: userID, RoleID: role1.ID}
-	grant2 := &auth.Grant{UserID: userID, RoleID: role2.ID}
+	username := "testuser"
+	grant1 := &auth.Grant{Username: username, RoleID: role1.ID}
+	grant2 := &auth.Grant{Username: username, RoleID: role2.ID}
 	_ = store.Create(context.Background(), grant1)
 	_ = store.Create(context.Background(), grant2)
 
-	roles, err := store.GetUserRoles(context.Background(), userID)
+	roles, err := store.GetUserRoles(context.Background(), username)
 	if err != nil {
 		t.Fatalf("GetUserRoles() error = %v", err)
 	}
@@ -196,13 +196,13 @@ func TestGrantStore_GetUserRoles_SkipsInvalidRoles(t *testing.T) {
 	role1 := &auth.Role{ID: uuid.New(), Name: "admin"}
 	_ = roleStore.Create(context.Background(), role1)
 
-	userID := uuid.New()
-	grant1 := &auth.Grant{UserID: userID, RoleID: role1.ID}
-	grant2 := &auth.Grant{UserID: userID, RoleID: uuid.New()}
+	username := "testuser"
+	grant1 := &auth.Grant{Username: username, RoleID: role1.ID}
+	grant2 := &auth.Grant{Username: username, RoleID: uuid.New()}
 	_ = store.Create(context.Background(), grant1)
 	_ = store.Create(context.Background(), grant2)
 
-	roles, err := store.GetUserRoles(context.Background(), userID)
+	roles, err := store.GetUserRoles(context.Background(), username)
 	if err != nil {
 		t.Fatalf("GetUserRoles() error = %v", err)
 	}
@@ -218,31 +218,31 @@ func TestGrantStore_HasRole(t *testing.T) {
 	role := &auth.Role{ID: uuid.New(), Name: "admin"}
 	_ = roleStore.Create(context.Background(), role)
 
-	userID := uuid.New()
-	grant := &auth.Grant{UserID: userID, RoleID: role.ID}
+	username := "testuser"
+	grant := &auth.Grant{Username: username, RoleID: role.ID}
 	_ = store.Create(context.Background(), grant)
 
 	tests := []struct {
 		name     string
-		userID   uuid.UUID
+		username string
 		roleName string
 		want     bool
 	}{
 		{
 			name:     "user has role",
-			userID:   userID,
+			username: username,
 			roleName: "admin",
 			want:     true,
 		},
 		{
 			name:     "user does not have role",
-			userID:   userID,
+			username: username,
 			roleName: "editor",
 			want:     false,
 		},
 		{
 			name:     "nonexistent user",
-			userID:   uuid.New(),
+			username: "nonexistent",
 			roleName: "admin",
 			want:     false,
 		},
@@ -250,7 +250,7 @@ func TestGrantStore_HasRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := store.HasRole(context.Background(), tt.userID, tt.roleName)
+			got, err := store.HasRole(context.Background(), tt.username, tt.roleName)
 			if err != nil {
 				t.Fatalf("HasRole() error = %v", err)
 			}
@@ -265,11 +265,11 @@ func TestGrantStore_HasRole_SkipsInvalidRoles(t *testing.T) {
 	roleStore := NewRoleStore()
 	store := NewGrantStore(roleStore)
 
-	userID := uuid.New()
-	grant := &auth.Grant{UserID: userID, RoleID: uuid.New()}
+	username := "testuser"
+	grant := &auth.Grant{Username: username, RoleID: uuid.New()}
 	_ = store.Create(context.Background(), grant)
 
-	hasRole, err := store.HasRole(context.Background(), userID, "admin")
+	hasRole, err := store.HasRole(context.Background(), username, "admin")
 	if err != nil {
 		t.Fatalf("HasRole() error = %v", err)
 	}

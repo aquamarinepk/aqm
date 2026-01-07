@@ -112,24 +112,24 @@ func (s *Seeder) SeedUser(ctx context.Context, input UserInput) (*auth.User, err
 }
 
 type GrantInput struct {
-	UserID     uuid.UUID
+	Username   string
 	RoleID     uuid.UUID
 	AssignedBy string
 }
 
 func (s *Seeder) SeedGrant(ctx context.Context, input GrantInput) (*auth.Grant, error) {
-	grant := auth.NewGrant(input.UserID, input.RoleID, input.AssignedBy)
+	grant := auth.NewGrant(input.Username, input.RoleID, input.AssignedBy)
 
 	if err := grant.Validate(); err != nil {
-		s.log.Errorf("grant validation failed: user_id=%s role_id=%s error=%v", input.UserID, input.RoleID, err)
+		s.log.Errorf("grant validation failed: username=%s role_id=%s error=%v", input.Username, input.RoleID, err)
 		return nil, err
 	}
 
 	if err := s.grants.Create(ctx, grant); err != nil {
-		s.log.Errorf("failed to create grant: user_id=%s role_id=%s error=%v", input.UserID, input.RoleID, err)
+		s.log.Errorf("failed to create grant: username=%s role_id=%s error=%v", input.Username, input.RoleID, err)
 		return nil, err
 	}
 
-	s.log.Infof("seeded grant: id=%s user_id=%s role_id=%s", grant.ID, grant.UserID, grant.RoleID)
+	s.log.Infof("seeded grant: id=%s username=%s role_id=%s", grant.ID, grant.Username, grant.RoleID)
 	return grant, nil
 }

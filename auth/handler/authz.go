@@ -32,14 +32,14 @@ func (h *AuthZHandler) RegisterRoutes(r chi.Router) {
 
 	r.Post("/grants", h.handleAssignRole)
 	r.Delete("/grants", h.handleRevokeRole)
-	r.Get("/users/{user_id}/roles", h.handleGetUserRoles)
-	r.Get("/users/{user_id}/grants", h.handleGetUserGrants)
+	r.Get("/users/{username}/roles", h.handleGetUserRoles)
+	r.Get("/users/{username}/grants", h.handleGetUserGrants)
 	r.Get("/roles/{role_id}/grants", h.handleGetRoleGrants)
 
-	r.Get("/users/{user_id}/permissions/{permission}", h.handleCheckPermission)
-	r.Post("/users/{user_id}/check-any-permission", h.handleCheckAnyPermission)
-	r.Post("/users/{user_id}/check-all-permissions", h.handleCheckAllPermissions)
-	r.Get("/users/{user_id}/has-role/{role_name}", h.handleHasRole)
+	r.Get("/users/{username}/permissions/{permission}", h.handleCheckPermission)
+	r.Post("/users/{username}/check-any-permission", h.handleCheckAnyPermission)
+	r.Post("/users/{username}/check-all-permissions", h.handleCheckAllPermissions)
+	r.Get("/users/{username}/has-role/{role_name}", h.handleHasRole)
 }
 
 type CreateRoleRequest struct {
@@ -183,7 +183,7 @@ func (h *AuthZHandler) handleDeleteRole(w http.ResponseWriter, r *http.Request) 
 }
 
 type AssignRoleRequest struct {
-	UserID     string `json:"user_id"`
+	Username   string `json:"username"`
 	RoleID     string `json:"role_id"`
 	AssignedBy string `json:"assigned_by"`
 }
@@ -199,9 +199,8 @@ func (h *AuthZHandler) handleAssignRole(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	userID, err := uuid.Parse(req.UserID)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "Invalid user ID format")
+	if req.Username == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_USERNAME", "Username is required")
 		return
 	}
 
@@ -211,7 +210,7 @@ func (h *AuthZHandler) handleAssignRole(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	grant, err := service.AssignRole(r.Context(), h.grantStore, userID, roleID, req.AssignedBy)
+	grant, err := service.AssignRole(r.Context(), h.grantStore, req.Username, roleID, req.AssignedBy)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -221,8 +220,8 @@ func (h *AuthZHandler) handleAssignRole(w http.ResponseWriter, r *http.Request) 
 }
 
 type RevokeRoleRequest struct {
-	UserID string `json:"user_id"`
-	RoleID string `json:"role_id"`
+	Username string `json:"username"`
+	RoleID   string `json:"role_id"`
 }
 
 func (h *AuthZHandler) handleRevokeRole(w http.ResponseWriter, r *http.Request) {
@@ -232,9 +231,8 @@ func (h *AuthZHandler) handleRevokeRole(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	userID, err := uuid.Parse(req.UserID)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "Invalid user ID format")
+	if req.Username == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_USERNAME", "Username is required")
 		return
 	}
 
@@ -244,7 +242,7 @@ func (h *AuthZHandler) handleRevokeRole(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := service.RevokeRole(r.Context(), h.grantStore, userID, roleID); err != nil {
+	if err := service.RevokeRole(r.Context(), h.grantStore, req.Username, roleID); err != nil {
 		handleServiceError(w, err)
 		return
 	}
@@ -257,14 +255,13 @@ type UserRolesResponse struct {
 }
 
 func (h *AuthZHandler) handleGetUserRoles(w http.ResponseWriter, r *http.Request) {
-	userIDStr := chi.URLParam(r, "user_id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "Invalid user ID format")
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_USERNAME", "Username is required")
 		return
 	}
 
-	roles, err := service.GetUserRoles(r.Context(), h.grantStore, userID)
+	roles, err := service.GetUserRoles(r.Context(), h.grantStore, username)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -278,14 +275,13 @@ type UserGrantsResponse struct {
 }
 
 func (h *AuthZHandler) handleGetUserGrants(w http.ResponseWriter, r *http.Request) {
-	userIDStr := chi.URLParam(r, "user_id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "Invalid user ID format")
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_USERNAME", "Username is required")
 		return
 	}
 
-	grants, err := service.GetUserGrants(r.Context(), h.grantStore, userID)
+	grants, err := service.GetUserGrants(r.Context(), h.grantStore, username)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -320,16 +316,15 @@ type PermissionCheckResponse struct {
 }
 
 func (h *AuthZHandler) handleCheckPermission(w http.ResponseWriter, r *http.Request) {
-	userIDStr := chi.URLParam(r, "user_id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "Invalid user ID format")
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_USERNAME", "Username is required")
 		return
 	}
 
 	permission := chi.URLParam(r, "permission")
 
-	hasPermission, err := service.CheckPermission(r.Context(), h.grantStore, userID, permission)
+	hasPermission, err := service.CheckPermission(r.Context(), h.grantStore, username, permission)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -343,10 +338,9 @@ type CheckAnyPermissionRequest struct {
 }
 
 func (h *AuthZHandler) handleCheckAnyPermission(w http.ResponseWriter, r *http.Request) {
-	userIDStr := chi.URLParam(r, "user_id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "Invalid user ID format")
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_USERNAME", "Username is required")
 		return
 	}
 
@@ -356,7 +350,7 @@ func (h *AuthZHandler) handleCheckAnyPermission(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	hasPermission, err := service.CheckAnyPermission(r.Context(), h.grantStore, userID, req.Permissions)
+	hasPermission, err := service.CheckAnyPermission(r.Context(), h.grantStore, username, req.Permissions)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -370,10 +364,9 @@ type CheckAllPermissionsRequest struct {
 }
 
 func (h *AuthZHandler) handleCheckAllPermissions(w http.ResponseWriter, r *http.Request) {
-	userIDStr := chi.URLParam(r, "user_id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "Invalid user ID format")
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_USERNAME", "Username is required")
 		return
 	}
 
@@ -383,7 +376,7 @@ func (h *AuthZHandler) handleCheckAllPermissions(w http.ResponseWriter, r *http.
 		return
 	}
 
-	hasPermission, err := service.CheckAllPermissions(r.Context(), h.grantStore, userID, req.Permissions)
+	hasPermission, err := service.CheckAllPermissions(r.Context(), h.grantStore, username, req.Permissions)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -397,16 +390,15 @@ type HasRoleResponse struct {
 }
 
 func (h *AuthZHandler) handleHasRole(w http.ResponseWriter, r *http.Request) {
-	userIDStr := chi.URLParam(r, "user_id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "Invalid user ID format")
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_USERNAME", "Username is required")
 		return
 	}
 
 	roleName := chi.URLParam(r, "role_name")
 
-	hasRole, err := service.HasRole(r.Context(), h.grantStore, userID, roleName)
+	hasRole, err := service.HasRole(r.Context(), h.grantStore, username, roleName)
 	if err != nil {
 		handleServiceError(w, err)
 		return

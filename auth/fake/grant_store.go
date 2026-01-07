@@ -9,14 +9,14 @@ import (
 )
 
 type grantKey struct {
-	UserID uuid.UUID
-	RoleID uuid.UUID
+	Username string
+	RoleID   uuid.UUID
 }
 
 type GrantStore struct {
-	mu         sync.RWMutex
-	grants     map[grantKey]*auth.Grant
-	roleStore  *RoleStore
+	mu        sync.RWMutex
+	grants    map[grantKey]*auth.Grant
+	roleStore *RoleStore
 }
 
 func NewGrantStore(roleStore *RoleStore) *GrantStore {
@@ -30,7 +30,7 @@ func (s *GrantStore) Create(ctx context.Context, grant *auth.Grant) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	key := grantKey{UserID: grant.UserID, RoleID: grant.RoleID}
+	key := grantKey{Username: grant.Username, RoleID: grant.RoleID}
 	if _, exists := s.grants[key]; exists {
 		return auth.ErrGrantAlreadyExists
 	}
@@ -39,11 +39,11 @@ func (s *GrantStore) Create(ctx context.Context, grant *auth.Grant) error {
 	return nil
 }
 
-func (s *GrantStore) Delete(ctx context.Context, userID, roleID uuid.UUID) error {
+func (s *GrantStore) Delete(ctx context.Context, username string, roleID uuid.UUID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	key := grantKey{UserID: userID, RoleID: roleID}
+	key := grantKey{Username: username, RoleID: roleID}
 	if _, exists := s.grants[key]; !exists {
 		return auth.ErrGrantNotFound
 	}
@@ -52,13 +52,13 @@ func (s *GrantStore) Delete(ctx context.Context, userID, roleID uuid.UUID) error
 	return nil
 }
 
-func (s *GrantStore) GetUserGrants(ctx context.Context, userID uuid.UUID) ([]*auth.Grant, error) {
+func (s *GrantStore) GetUserGrants(ctx context.Context, username string) ([]*auth.Grant, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	grants := make([]*auth.Grant, 0)
 	for key, grant := range s.grants {
-		if key.UserID == userID {
+		if key.Username == username {
 			grants = append(grants, grant)
 		}
 	}
@@ -80,13 +80,13 @@ func (s *GrantStore) GetRoleGrants(ctx context.Context, roleID uuid.UUID) ([]*au
 	return grants, nil
 }
 
-func (s *GrantStore) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]*auth.Role, error) {
+func (s *GrantStore) GetUserRoles(ctx context.Context, username string) ([]*auth.Role, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	roles := make([]*auth.Role, 0)
 	for key := range s.grants {
-		if key.UserID == userID {
+		if key.Username == username {
 			role, err := s.roleStore.Get(ctx, key.RoleID)
 			if err != nil {
 				continue
@@ -98,12 +98,12 @@ func (s *GrantStore) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]*aut
 	return roles, nil
 }
 
-func (s *GrantStore) HasRole(ctx context.Context, userID uuid.UUID, roleName string) (bool, error) {
+func (s *GrantStore) HasRole(ctx context.Context, username string, roleName string) (bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	for key := range s.grants {
-		if key.UserID == userID {
+		if key.Username == username {
 			role, err := s.roleStore.Get(ctx, key.RoleID)
 			if err != nil {
 				continue

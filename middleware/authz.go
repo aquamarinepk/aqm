@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/aquamarinepk/aqm/auth"
-	"github.com/google/uuid"
 )
 
 // AuthzChecker implements RoleChecker using auth.GrantStore.
+// NOTE: With username-based grants, this checker uses usernames directly
+// instead of parsing UUIDs. The username is the natural key for authorization.
 type AuthzChecker struct {
 	grantStore auth.GrantStore
 }
@@ -20,24 +21,22 @@ func NewAuthzChecker(grantStore auth.GrantStore) *AuthzChecker {
 }
 
 // HasRole checks if a user has a specific role.
-func (a *AuthzChecker) HasRole(ctx context.Context, userID string, roleName string) (bool, error) {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return false, err
+func (a *AuthzChecker) HasRole(ctx context.Context, username string, roleName string) (bool, error) {
+	if username == "" {
+		return false, nil
 	}
 
 	roleName = auth.NormalizeRoleName(roleName)
-	return a.grantStore.HasRole(ctx, uid, roleName)
+	return a.grantStore.HasRole(ctx, username, roleName)
 }
 
 // CheckPermission checks if a user has a specific permission.
-func (a *AuthzChecker) CheckPermission(ctx context.Context, userID string, permission string) (bool, error) {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return false, err
+func (a *AuthzChecker) CheckPermission(ctx context.Context, username string, permission string) (bool, error) {
+	if username == "" {
+		return false, nil
 	}
 
-	roles, err := a.grantStore.GetUserRoles(ctx, uid)
+	roles, err := a.grantStore.GetUserRoles(ctx, username)
 	if err != nil {
 		return false, err
 	}
@@ -55,13 +54,12 @@ func (a *AuthzChecker) CheckPermission(ctx context.Context, userID string, permi
 }
 
 // CheckAnyPermission checks if a user has any of the specified permissions.
-func (a *AuthzChecker) CheckAnyPermission(ctx context.Context, userID string, permissions []string) (bool, error) {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return false, err
+func (a *AuthzChecker) CheckAnyPermission(ctx context.Context, username string, permissions []string) (bool, error) {
+	if username == "" {
+		return false, nil
 	}
 
-	roles, err := a.grantStore.GetUserRoles(ctx, uid)
+	roles, err := a.grantStore.GetUserRoles(ctx, username)
 	if err != nil {
 		return false, err
 	}
@@ -79,13 +77,12 @@ func (a *AuthzChecker) CheckAnyPermission(ctx context.Context, userID string, pe
 }
 
 // CheckAllPermissions checks if a user has all of the specified permissions.
-func (a *AuthzChecker) CheckAllPermissions(ctx context.Context, userID string, permissions []string) (bool, error) {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return false, err
+func (a *AuthzChecker) CheckAllPermissions(ctx context.Context, username string, permissions []string) (bool, error) {
+	if username == "" {
+		return false, nil
 	}
 
-	roles, err := a.grantStore.GetUserRoles(ctx, uid)
+	roles, err := a.grantStore.GetUserRoles(ctx, username)
 	if err != nil {
 		return false, err
 	}

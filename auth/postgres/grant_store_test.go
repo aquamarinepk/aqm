@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/aquamarinepk/aqm/auth"
-	"github.com/google/uuid"
 )
 
 func setupGrantTestDB(t *testing.T) (*grantStore, *roleStore, func()) {
@@ -27,11 +26,11 @@ func setupGrantTestDB(t *testing.T) (*grantStore, *roleStore, func()) {
 		);
 		CREATE TABLE IF NOT EXISTS grants (
 			id UUID PRIMARY KEY,
-			user_id UUID NOT NULL,
+			username TEXT NOT NULL,
 			role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
 			assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			assigned_by TEXT NOT NULL,
-			UNIQUE(user_id, role_id)
+			UNIQUE(username, role_id)
 		)
 	`)
 	if err != nil {
@@ -61,15 +60,15 @@ func TestGrantStoreCreate(t *testing.T) {
 	role.BeforeCreate()
 	rstore.Create(ctx, role)
 
-	userID := uuid.New()
-	grant := auth.NewGrant(userID, role.ID, "system")
+	username := "testuser"
+	grant := auth.NewGrant(username, role.ID, "system")
 
 	err := gstore.Create(ctx, grant)
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	grants, _ := gstore.GetUserGrants(ctx, userID)
+	grants, _ := gstore.GetUserGrants(ctx, username)
 	if len(grants) != 1 {
 		t.Errorf("GetUserGrants() count = %v, want 1", len(grants))
 	}
@@ -88,11 +87,11 @@ func TestGrantStoreHasRole(t *testing.T) {
 	role.BeforeCreate()
 	rstore.Create(ctx, role)
 
-	userID := uuid.New()
-	grant := auth.NewGrant(userID, role.ID, "system")
+	username := "testuser"
+	grant := auth.NewGrant(username, role.ID, "system")
 	gstore.Create(ctx, grant)
 
-	has, err := gstore.HasRole(ctx, userID, "viewer")
+	has, err := gstore.HasRole(ctx, username, "viewer")
 	if err != nil {
 		t.Fatalf("HasRole() error = %v", err)
 	}
@@ -115,16 +114,16 @@ func TestGrantStoreDelete(t *testing.T) {
 	role.BeforeCreate()
 	rstore.Create(ctx, role)
 
-	userID := uuid.New()
-	grant := auth.NewGrant(userID, role.ID, "system")
+	username := "testuser"
+	grant := auth.NewGrant(username, role.ID, "system")
 	gstore.Create(ctx, grant)
 
-	err := gstore.Delete(ctx, userID, role.ID)
+	err := gstore.Delete(ctx, username, role.ID)
 	if err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
 
-	has, err := gstore.HasRole(ctx, userID, "editor")
+	has, err := gstore.HasRole(ctx, username, "editor")
 	if err != nil {
 		t.Fatalf("HasRole() error = %v", err)
 	}
@@ -147,8 +146,8 @@ func TestGrantStoreGetRoleGrants(t *testing.T) {
 	role.BeforeCreate()
 	rstore.Create(ctx, role)
 
-	user1 := uuid.New()
-	user2 := uuid.New()
+	user1 := "testuser1"
+	user2 := "testuser2"
 
 	grant1 := auth.NewGrant(user1, role.ID, "system")
 	gstore.Create(ctx, grant1)
@@ -180,15 +179,15 @@ func TestGrantStoreGetUserRoles(t *testing.T) {
 	role2.BeforeCreate()
 	rstore.Create(ctx, role2)
 
-	userID := uuid.New()
+	username := "testuser"
 
-	grant1 := auth.NewGrant(userID, role1.ID, "system")
+	grant1 := auth.NewGrant(username, role1.ID, "system")
 	gstore.Create(ctx, grant1)
 
-	grant2 := auth.NewGrant(userID, role2.ID, "system")
+	grant2 := auth.NewGrant(username, role2.ID, "system")
 	gstore.Create(ctx, grant2)
 
-	roles, err := gstore.GetUserRoles(ctx, userID)
+	roles, err := gstore.GetUserRoles(ctx, username)
 	if err != nil {
 		t.Fatalf("GetUserRoles() error = %v", err)
 	}

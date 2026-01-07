@@ -11,7 +11,6 @@ import (
 	"github.com/aquamarinepk/aqm/auth/seed"
 	"github.com/aquamarinepk/aqm/config"
 	"github.com/aquamarinepk/aqm/log"
-	"github.com/google/uuid"
 )
 
 // BootstrapService orchestrates the authz bootstrap process by coordinating with authn.
@@ -24,15 +23,21 @@ type BootstrapService struct {
 	log        log.Logger
 }
 
+// NOTE: With username-based grants, AuthZ no longer requires UUID synchronization
+// with AuthN. Each service maintains its own internal identifiers.
+// The username serves as the natural key for cross-service correlation.
+
 type BootstrapStatusResponse struct {
-	NeedsBootstrap bool   `json:"needs_bootstrap"`
-	SuperadminID   string `json:"superadmin_id,omitempty"`
+	NeedsBootstrap     bool   `json:"needs_bootstrap"`
+	SuperadminID       string `json:"superadmin_id,omitempty"`       // kept for compatibility
+	SuperadminUsername string `json:"superadmin_username,omitempty"` // primary identifier
 }
 
 type BootstrapResponse struct {
-	SuperadminID string `json:"superadmin_id"`
-	Email        string `json:"email"`
-	Password     string `json:"password"`
+	SuperadminID       string `json:"superadmin_id"`       // kept for compatibility
+	SuperadminUsername string `json:"superadmin_username"` // primary identifier
+	Email              string `json:"email"`
+	Password           string `json:"password"`
 }
 
 // NewBootstrapService creates a new bootstrap service with required dependencies.
@@ -59,7 +64,7 @@ func (s *BootstrapService) Bootstrap(ctx context.Context) error {
 		return fmt.Errorf("failed to get bootstrap status from authn: %w", err)
 	}
 
-	var superadminID string
+	var superadminUsername string
 
 	if status.NeedsBootstrap {
 		s.log.Infof("System needs bootstrap, triggering authn bootstrap...")
@@ -69,8 +74,8 @@ func (s *BootstrapService) Bootstrap(ctx context.Context) error {
 			return fmt.Errorf("failed to trigger authn bootstrap: %w", err)
 		}
 
-		superadminID = response.SuperadminID
-		s.log.Infof("Authn bootstrap completed: superadmin_id=%s email=%s", response.SuperadminID, response.Email)
+		superadminUsername = response.SuperadminUsername
+		s.log.Infof("Authn bootstrap completed: username=%s email=%s", response.SuperadminUsername, response.Email)
 
 		if response.Password != "" {
 			s.log.Infof("============================================")
@@ -79,15 +84,15 @@ func (s *BootstrapService) Bootstrap(ctx context.Context) error {
 			s.log.Infof("============================================")
 		}
 	} else {
-		s.log.Infof("System already bootstrapped: superadmin_id=%s", status.SuperadminID)
-		superadminID = status.SuperadminID
+		s.log.Infof("System already bootstrapped: username=%s", status.SuperadminUsername)
+		superadminUsername = status.SuperadminUsername
 	}
 
 	if err := s.bootstrapRoles(ctx); err != nil {
 		return fmt.Errorf("failed to bootstrap roles: %w", err)
 	}
 
-	if err := s.ensureSuperadminGrant(ctx, superadminID); err != nil {
+	if err := s.ensureSuperadminGrant(ctx, superadminUsername); err != nil {
 		return fmt.Errorf("failed to ensure superadmin grant: %w", err)
 	}
 
@@ -193,9 +198,9 @@ func (s *BootstrapService) bootstrapRoles(ctx context.Context) error {
 }
 
 // ensureSuperadminGrant creates grant for superadmin if it doesn't exist
-func (s *BootstrapService) ensureSuperadminGrant(ctx context.Context, superadminID string) error {
-	if superadminID == "" {
-		return fmt.Errorf("superadmin ID is required")
+func (s *BootstrapService) ensureSuperadminGrant(ctx context.Context, superadminUsername string) error {
+	if superadminUsername == "" {
+		return fmt.Errorf("superadmin username is required")
 	}
 
 	role, err := s.roleStore.GetByName(ctx, "superadmin")
@@ -203,12 +208,7 @@ func (s *BootstrapService) ensureSuperadminGrant(ctx context.Context, superadmin
 		return fmt.Errorf("superadmin role not found: %w", err)
 	}
 
-	userID, err := uuid.Parse(superadminID)
-	if err != nil {
-		return fmt.Errorf("invalid superadmin ID: %w", err)
-	}
-
-	grants, err := s.grantStore.GetUserGrants(ctx, userID)
+	grants, err := s.grantStore.GetUserGrants(ctx, superadminUsername)
 	if err != nil {
 		s.log.Errorf("Failed to check existing grants (continuing): %v", err)
 	} else {
@@ -221,7 +221,7 @@ func (s *BootstrapService) ensureSuperadminGrant(ctx context.Context, superadmin
 	}
 
 	_, err = s.seeder.SeedGrant(ctx, seed.GrantInput{
-		UserID:     userID,
+		Username:   superadminUsername,
 		RoleID:     role.ID,
 		AssignedBy: "system",
 	})
@@ -229,6 +229,6 @@ func (s *BootstrapService) ensureSuperadminGrant(ctx context.Context, superadmin
 		return fmt.Errorf("failed to create superadmin grant: %w", err)
 	}
 
-	s.log.Infof("Superadmin grant created successfully: user_id=%s role_id=%s", userID, role.ID)
+	s.log.Infof("Superadmin grant created successfully: username=%s role_id=%s", superadminUsername, role.ID)
 	return nil
 }

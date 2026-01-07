@@ -30,9 +30,9 @@ type RoleStore interface {
 
 type GrantStore interface {
 	Create(ctx context.Context, grant *Grant) error
-	Delete(ctx context.Context, userID, roleID uuid.UUID) error
-	GetUserGrants(ctx context.Context, userID uuid.UUID) ([]*Grant, error)
+	Delete(ctx context.Context, username string, roleID uuid.UUID) error
+	GetUserGrants(ctx context.Context, username string) ([]*Grant, error)
 	GetRoleGrants(ctx context.Context, roleID uuid.UUID) ([]*Grant, error)
-	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]*Role, error)
-	HasRole(ctx context.Context, userID uuid.UUID, roleName string) (bool, error)
+	GetUserRoles(ctx context.Context, username string) ([]*Role, error)
+	HasRole(ctx context.Context, username string, roleName string) (bool, error)
 }

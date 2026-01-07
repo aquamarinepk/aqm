@@ -88,7 +88,7 @@ func Example_seedPackage() {
 
 	// Grant admin role to user
 	grant, err := seeder.SeedGrant(ctx, seed.GrantInput{
-		UserID:     user.ID,
+		Username:   user.Username,
 		RoleID:     role.ID,
 		AssignedBy: "system",
 	})
@@ -130,19 +130,16 @@ func Example_roleBasedAccessControl() {
 	_ = roleStore.Create(ctx, editorRole)
 
 	// Create user and grant editor role
-	userID := uuid.New()
-	grant := &auth.Grant{
-		UserID: userID,
-		RoleID: editorRole.ID,
-	}
+	username := "testuser"
+	grant := auth.NewGrant(username, editorRole.ID, "system")
 	_ = grantStore.Create(ctx, grant)
 
 	// Check permissions
-	hasRead, _ := grantStore.HasRole(ctx, userID, "editor")
+	hasRead, _ := grantStore.HasRole(ctx, username, "editor")
 	fmt.Printf("User has editor role: %t\n", hasRead)
 
 	// Get all user roles
-	roles, _ := grantStore.GetUserRoles(ctx, userID)
+	roles, _ := grantStore.GetUserRoles(ctx, username)
 	for _, role := range roles {
 		fmt.Printf("User role: %s with permissions: %v\n", role.Name, role.Permissions)
 	}
@@ -263,7 +260,7 @@ func Example_authenticationFlow() {
 	fmt.Printf("Step 2 - Created role: %s\n", role.Name)
 
 	// 3. Grant role to user
-	grant := auth.NewGrant(user.ID, role.ID, "system")
+	grant := auth.NewGrant(user.Username, role.ID, "system")
 	_ = grantStore.Create(ctx, grant)
 	fmt.Printf("Step 3 - Granted role to user\n")
 
@@ -273,11 +270,11 @@ func Example_authenticationFlow() {
 	fmt.Printf("Step 5 - Generated token: %s\n", token[:6])
 
 	// 6. Check user's roles
-	roles, _ := grantStore.GetUserRoles(ctx, user.ID)
+	roles, _ := grantStore.GetUserRoles(ctx, user.Username)
 	fmt.Printf("Step 6 - User has %d role(s)\n", len(roles))
 
 	// 7. Check permissions
-	hasRead, _ := grantStore.HasRole(ctx, user.ID, "member")
+	hasRead, _ := grantStore.HasRole(ctx, user.Username, "member")
 	fmt.Printf("Step 7 - User has member role: %t\n", hasRead)
 
 	// Output:

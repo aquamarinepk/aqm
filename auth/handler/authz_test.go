@@ -221,7 +221,6 @@ func TestHandleAssignRole(t *testing.T) {
 
 	var signupResp SignUpResponse
 	json.NewDecoder(signupW.Body).Decode(&signupResp)
-	userID := signupResp.User.ID
 
 	// Create a role
 	roleBody, _ := json.Marshal(CreateRoleRequest{
@@ -247,26 +246,26 @@ func TestHandleAssignRole(t *testing.T) {
 		{
 			name: "valid assignment",
 			body: AssignRoleRequest{
-				UserID:     userID.String(),
+				Username:   signupResp.User.Username,
 				RoleID:     roleID.String(),
 				AssignedBy: "admin",
 			},
 			wantStatus: http.StatusCreated,
 		},
 		{
-			name: "invalid user ID",
+			name: "empty username",
 			body: AssignRoleRequest{
-				UserID:     "invalid",
+				Username:   "",
 				RoleID:     roleID.String(),
 				AssignedBy: "admin",
 			},
 			wantStatus: http.StatusBadRequest,
-			wantCode:   "INVALID_USER_ID",
+			wantCode:   "INVALID_USERNAME",
 		},
 		{
 			name: "invalid role ID",
 			body: AssignRoleRequest{
-				UserID:     userID.String(),
+				Username:   signupResp.User.Username,
 				RoleID:     "invalid",
 				AssignedBy: "admin",
 			},
@@ -316,7 +315,6 @@ func TestHandleCheckPermission(t *testing.T) {
 
 	var signupResp SignUpResponse
 	json.NewDecoder(signupW.Body).Decode(&signupResp)
-	userID := signupResp.User.ID
 
 	// Create a role with permission
 	roleBody, _ := json.Marshal(CreateRoleRequest{
@@ -335,7 +333,7 @@ func TestHandleCheckPermission(t *testing.T) {
 
 	// Assign role to user
 	assignBody, _ := json.Marshal(AssignRoleRequest{
-		UserID:     userID.String(),
+		Username:   signupResp.User.Username,
 		RoleID:     roleID.String(),
 		AssignedBy: "admin",
 	})
@@ -343,9 +341,11 @@ func TestHandleCheckPermission(t *testing.T) {
 	assignW := httptest.NewRecorder()
 	authZHandler.handleAssignRole(assignW, assignReq)
 
+	username := signupResp.User.Username
+
 	tests := []struct {
 		name           string
-		userID         string
+		username       string
 		permission     string
 		wantStatus     int
 		wantPermission bool
@@ -353,32 +353,32 @@ func TestHandleCheckPermission(t *testing.T) {
 	}{
 		{
 			name:           "has permission",
-			userID:         userID.String(),
+			username:       username,
 			permission:     "content.write",
 			wantStatus:     http.StatusOK,
 			wantPermission: true,
 		},
 		{
 			name:           "no permission",
-			userID:         userID.String(),
+			username:       username,
 			permission:     "content.delete",
 			wantStatus:     http.StatusOK,
 			wantPermission: false,
 		},
 		{
-			name:       "invalid user ID",
-			userID:     "invalid",
+			name:       "empty username",
+			username:   "",
 			permission: "test",
 			wantStatus: http.StatusBadRequest,
-			wantCode:   "INVALID_USER_ID",
+			wantCode:   "INVALID_USERNAME",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/users/"+tt.userID+"/permissions/"+tt.permission, nil)
+			req := httptest.NewRequest(http.MethodGet, "/users/"+tt.username+"/permissions/"+tt.permission, nil)
 			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("user_id", tt.userID)
+			rctx.URLParams.Add("username", tt.username)
 			rctx.URLParams.Add("permission", tt.permission)
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
@@ -479,12 +479,12 @@ func TestHandleInvalidJSONAuthZ(t *testing.T) {
 				handler.handleUpdateRole(w, req)
 			case "/check-any":
 				rctx := chi.NewRouteContext()
-				rctx.URLParams.Add("user_id", "00000000-0000-0000-0000-000000000000")
+				rctx.URLParams.Add("username", "00000000-0000-0000-0000-000000000000")
 				req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 				handler.handleCheckAnyPermission(w, req)
 			case "/check-all":
 				rctx := chi.NewRouteContext()
-				rctx.URLParams.Add("user_id", "00000000-0000-0000-0000-000000000000")
+				rctx.URLParams.Add("username", "00000000-0000-0000-0000-000000000000")
 				req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 				handler.handleCheckAllPermissions(w, req)
 			}
@@ -533,11 +533,10 @@ func TestHandleAuthZErrorPaths(t *testing.T) {
 
 	var signupResp SignUpResponse
 	json.NewDecoder(signupW.Body).Decode(&signupResp)
-	userID := signupResp.User.ID
 
 	// Assign role
 	assignBody, _ := json.Marshal(AssignRoleRequest{
-		UserID:     userID.String(),
+		Username:   signupResp.User.Username,
 		RoleID:     roleID.String(),
 		AssignedBy: "admin",
 	})
@@ -548,7 +547,7 @@ func TestHandleAuthZErrorPaths(t *testing.T) {
 	// Test duplicate role assignment
 	t.Run("duplicate role assignment", func(t *testing.T) {
 		dupAssignBody, _ := json.Marshal(AssignRoleRequest{
-			UserID:     userID.String(),
+			Username:   signupResp.User.Username,
 			RoleID:     roleID.String(),
 			AssignedBy: "admin",
 		})
@@ -605,11 +604,10 @@ func TestHandleAuthZErrorPaths(t *testing.T) {
 
 		var signupResp2 SignUpResponse
 		json.NewDecoder(signupW2.Body).Decode(&signupResp2)
-		userID2 := signupResp2.User.ID
 
 		revokeBody, _ := json.Marshal(RevokeRoleRequest{
-			UserID: userID2.String(),
-			RoleID: roleID.String(),
+			Username: signupResp2.User.Username,
+			RoleID:   roleID.String(),
 		})
 		revokeReq := httptest.NewRequest(http.MethodDelete, "/grants", bytes.NewReader(revokeBody))
 		revokeW := httptest.NewRecorder()
@@ -855,7 +853,6 @@ func TestHandleRevokeRole(t *testing.T) {
 
 	var signupResp SignUpResponse
 	json.NewDecoder(signupW.Body).Decode(&signupResp)
-	userID := signupResp.User.ID
 
 	roleBody, _ := json.Marshal(CreateRoleRequest{
 		Name:        "revokable",
@@ -871,9 +868,11 @@ func TestHandleRevokeRole(t *testing.T) {
 	json.NewDecoder(roleW.Body).Decode(&roleResp)
 	roleID := roleResp.Role.ID
 
+	username := signupResp.User.Username
+
 	// Assign role
 	assignBody, _ := json.Marshal(AssignRoleRequest{
-		UserID:     userID.String(),
+		Username:   username,
 		RoleID:     roleID.String(),
 		AssignedBy: "admin",
 	})
@@ -890,25 +889,25 @@ func TestHandleRevokeRole(t *testing.T) {
 		{
 			name: "valid revoke",
 			body: RevokeRoleRequest{
-				UserID: userID.String(),
-				RoleID: roleID.String(),
+				Username: username,
+				RoleID:   roleID.String(),
 			},
 			wantStatus: http.StatusNoContent,
 		},
 		{
-			name: "invalid user ID",
+			name: "empty username",
 			body: RevokeRoleRequest{
-				UserID: "invalid",
-				RoleID: roleID.String(),
+				Username: "",
+				RoleID:   roleID.String(),
 			},
 			wantStatus: http.StatusBadRequest,
-			wantCode:   "INVALID_USER_ID",
+			wantCode:   "INVALID_USERNAME",
 		},
 		{
 			name: "invalid role ID",
 			body: RevokeRoleRequest{
-				UserID: userID.String(),
-				RoleID: "invalid",
+				Username: username,
+				RoleID:   "invalid",
 			},
 			wantStatus: http.StatusBadRequest,
 			wantCode:   "INVALID_ROLE_ID",
@@ -955,32 +954,31 @@ func TestHandleGetUserRoles(t *testing.T) {
 
 	var signupResp SignUpResponse
 	json.NewDecoder(signupW.Body).Decode(&signupResp)
-	userID := signupResp.User.ID
 
 	tests := []struct {
 		name       string
-		userID     string
+		username   string
 		wantStatus int
 		wantCode   string
 	}{
 		{
 			name:       "valid user",
-			userID:     userID.String(),
+			username:   signupResp.User.Username,
 			wantStatus: http.StatusOK,
 		},
 		{
-			name:       "invalid user ID",
-			userID:     "invalid",
+			name:       "empty username",
+			username:   "",
 			wantStatus: http.StatusBadRequest,
-			wantCode:   "INVALID_USER_ID",
+			wantCode:   "INVALID_USERNAME",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/users/"+tt.userID+"/roles", nil)
+			req := httptest.NewRequest(http.MethodGet, "/users/"+tt.username+"/roles", nil)
 			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("user_id", tt.userID)
+			rctx.URLParams.Add("username", tt.username)
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 			w := httptest.NewRecorder()
@@ -1017,11 +1015,11 @@ func TestHandleGetUserGrants(t *testing.T) {
 
 	var signupResp SignUpResponse
 	json.NewDecoder(signupW.Body).Decode(&signupResp)
-	userID := signupResp.User.ID
+	username := signupResp.User.Username
 
-	req := httptest.NewRequest(http.MethodGet, "/users/"+userID.String()+"/grants", nil)
+	req := httptest.NewRequest(http.MethodGet, "/users/"+username+"/grants", nil)
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("user_id", userID.String())
+	rctx.URLParams.Add("username", username)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -1079,7 +1077,6 @@ func TestHandleCheckAnyPermission(t *testing.T) {
 
 	var signupResp SignUpResponse
 	json.NewDecoder(signupW.Body).Decode(&signupResp)
-	userID := signupResp.User.ID
 
 	roleBody, _ := json.Marshal(CreateRoleRequest{
 		Name:        "multi-permissions",
@@ -1094,9 +1091,10 @@ func TestHandleCheckAnyPermission(t *testing.T) {
 	var roleResp RoleResponse
 	json.NewDecoder(roleW.Body).Decode(&roleResp)
 	roleID := roleResp.Role.ID
+	username := signupResp.User.Username
 
 	assignBody, _ := json.Marshal(AssignRoleRequest{
-		UserID:     userID.String(),
+		Username:   username,
 		RoleID:     roleID.String(),
 		AssignedBy: "admin",
 	})
@@ -1106,7 +1104,7 @@ func TestHandleCheckAnyPermission(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		userID         string
+		username       string
 		permissions    []string
 		wantStatus     int
 		wantPermission bool
@@ -1114,33 +1112,33 @@ func TestHandleCheckAnyPermission(t *testing.T) {
 	}{
 		{
 			name:           "has one of permissions",
-			userID:         userID.String(),
+			username:       username,
 			permissions:    []string{"read", "delete"},
 			wantStatus:     http.StatusOK,
 			wantPermission: true,
 		},
 		{
 			name:           "has none of permissions",
-			userID:         userID.String(),
+			username:       username,
 			permissions:    []string{"delete", "admin"},
 			wantStatus:     http.StatusOK,
 			wantPermission: false,
 		},
 		{
-			name:        "invalid user ID",
-			userID:      "invalid",
+			name:        "empty username",
+			username:    "",
 			permissions: []string{"test"},
 			wantStatus:  http.StatusBadRequest,
-			wantCode:    "INVALID_USER_ID",
+			wantCode:    "INVALID_USERNAME",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reqBody, _ := json.Marshal(CheckAnyPermissionRequest{Permissions: tt.permissions})
-			req := httptest.NewRequest(http.MethodPost, "/users/"+tt.userID+"/check-any-permission", bytes.NewReader(reqBody))
+			req := httptest.NewRequest(http.MethodPost, "/users/"+tt.username+"/check-any-permission", bytes.NewReader(reqBody))
 			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("user_id", tt.userID)
+			rctx.URLParams.Add("username", tt.username)
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 			w := httptest.NewRecorder()
@@ -1183,7 +1181,6 @@ func TestHandleCheckAllPermissions(t *testing.T) {
 
 	var signupResp SignUpResponse
 	json.NewDecoder(signupW.Body).Decode(&signupResp)
-	userID := signupResp.User.ID
 
 	roleBody, _ := json.Marshal(CreateRoleRequest{
 		Name:        "fullaccess",
@@ -1198,9 +1195,10 @@ func TestHandleCheckAllPermissions(t *testing.T) {
 	var roleResp RoleResponse
 	json.NewDecoder(roleW.Body).Decode(&roleResp)
 	roleID := roleResp.Role.ID
+	username := signupResp.User.Username
 
 	assignBody, _ := json.Marshal(AssignRoleRequest{
-		UserID:     userID.String(),
+		Username:   username,
 		RoleID:     roleID.String(),
 		AssignedBy: "admin",
 	})
@@ -1210,21 +1208,21 @@ func TestHandleCheckAllPermissions(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		userID         string
+		username       string
 		permissions    []string
 		wantStatus     int
 		wantPermission bool
 	}{
 		{
 			name:           "has all permissions",
-			userID:         userID.String(),
+			username:       username,
 			permissions:    []string{"read", "write"},
 			wantStatus:     http.StatusOK,
 			wantPermission: true,
 		},
 		{
 			name:           "missing one permission",
-			userID:         userID.String(),
+			username:       username,
 			permissions:    []string{"read", "admin"},
 			wantStatus:     http.StatusOK,
 			wantPermission: false,
@@ -1234,9 +1232,9 @@ func TestHandleCheckAllPermissions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reqBody, _ := json.Marshal(CheckAllPermissionsRequest{Permissions: tt.permissions})
-			req := httptest.NewRequest(http.MethodPost, "/users/"+tt.userID+"/check-all-permissions", bytes.NewReader(reqBody))
+			req := httptest.NewRequest(http.MethodPost, "/users/"+tt.username+"/check-all-permissions", bytes.NewReader(reqBody))
 			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("user_id", tt.userID)
+			rctx.URLParams.Add("username", tt.username)
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 			w := httptest.NewRecorder()
@@ -1271,7 +1269,6 @@ func TestHandleHasRole(t *testing.T) {
 
 	var signupResp SignUpResponse
 	json.NewDecoder(signupW.Body).Decode(&signupResp)
-	userID := signupResp.User.ID
 
 	roleBody, _ := json.Marshal(CreateRoleRequest{
 		Name:        "moderator",
@@ -1286,9 +1283,10 @@ func TestHandleHasRole(t *testing.T) {
 	var roleResp RoleResponse
 	json.NewDecoder(roleW.Body).Decode(&roleResp)
 	roleID := roleResp.Role.ID
+	username := signupResp.User.Username
 
 	assignBody, _ := json.Marshal(AssignRoleRequest{
-		UserID:     userID.String(),
+		Username:   username,
 		RoleID:     roleID.String(),
 		AssignedBy: "admin",
 	})
@@ -1298,21 +1296,21 @@ func TestHandleHasRole(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		userID     string
+		username   string
 		roleName   string
 		wantStatus int
 		hasRole    bool
 	}{
 		{
 			name:       "has role",
-			userID:     userID.String(),
+			username:   username,
 			roleName:   "moderator",
 			wantStatus: http.StatusOK,
 			hasRole:    true,
 		},
 		{
 			name:       "does not have role",
-			userID:     userID.String(),
+			username:   username,
 			roleName:   "admin",
 			wantStatus: http.StatusOK,
 			hasRole:    false,
@@ -1321,9 +1319,9 @@ func TestHandleHasRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/users/"+tt.userID+"/has-role/"+tt.roleName, nil)
+			req := httptest.NewRequest(http.MethodGet, "/users/"+tt.username+"/has-role/"+tt.roleName, nil)
 			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("user_id", tt.userID)
+			rctx.URLParams.Add("username", tt.username)
 			rctx.URLParams.Add("role_name", tt.roleName)
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 

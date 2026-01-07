@@ -100,13 +100,13 @@ func DeleteRole(ctx context.Context, store auth.RoleStore, id uuid.UUID) error {
 }
 
 // AssignRole assigns a role to a user
-func AssignRole(ctx context.Context, store auth.GrantStore, userID, roleID uuid.UUID, assignedBy string) (*auth.Grant, error) {
+func AssignRole(ctx context.Context, store auth.GrantStore, username string, roleID uuid.UUID, assignedBy string) (*auth.Grant, error) {
 	if store == nil {
 		return nil, fmt.Errorf("grant store is required")
 	}
 
 	// Check if grant already exists
-	grants, err := store.GetUserGrants(ctx, userID)
+	grants, err := store.GetUserGrants(ctx, username)
 	if err != nil {
 		return nil, fmt.Errorf("check existing grants: %w", err)
 	}
@@ -116,7 +116,7 @@ func AssignRole(ctx context.Context, store auth.GrantStore, userID, roleID uuid.
 		}
 	}
 
-	grant := auth.NewGrant(userID, roleID, assignedBy)
+	grant := auth.NewGrant(username, roleID, assignedBy)
 
 	if err := store.Create(ctx, grant); err != nil {
 		return nil, fmt.Errorf("create grant: %w", err)
@@ -126,27 +126,27 @@ func AssignRole(ctx context.Context, store auth.GrantStore, userID, roleID uuid.
 }
 
 // RevokeRole removes a role from a user
-func RevokeRole(ctx context.Context, store auth.GrantStore, userID, roleID uuid.UUID) error {
+func RevokeRole(ctx context.Context, store auth.GrantStore, username string, roleID uuid.UUID) error {
 	if store == nil {
 		return fmt.Errorf("grant store is required")
 	}
-	return store.Delete(ctx, userID, roleID)
+	return store.Delete(ctx, username, roleID)
 }
 
 // GetUserRoles retrieves all roles for a user
-func GetUserRoles(ctx context.Context, store auth.GrantStore, userID uuid.UUID) ([]*auth.Role, error) {
+func GetUserRoles(ctx context.Context, store auth.GrantStore, username string) ([]*auth.Role, error) {
 	if store == nil {
 		return nil, fmt.Errorf("grant store is required")
 	}
-	return store.GetUserRoles(ctx, userID)
+	return store.GetUserRoles(ctx, username)
 }
 
 // GetUserGrants retrieves all grants for a user
-func GetUserGrants(ctx context.Context, store auth.GrantStore, userID uuid.UUID) ([]*auth.Grant, error) {
+func GetUserGrants(ctx context.Context, store auth.GrantStore, username string) ([]*auth.Grant, error) {
 	if store == nil {
 		return nil, fmt.Errorf("grant store is required")
 	}
-	return store.GetUserGrants(ctx, userID)
+	return store.GetUserGrants(ctx, username)
 }
 
 // GetRoleGrants retrieves all grants for a role
@@ -158,12 +158,12 @@ func GetRoleGrants(ctx context.Context, store auth.GrantStore, roleID uuid.UUID)
 }
 
 // CheckPermission checks if a user has a specific permission
-func CheckPermission(ctx context.Context, store auth.GrantStore, userID uuid.UUID, permission string) (bool, error) {
+func CheckPermission(ctx context.Context, store auth.GrantStore, username string, permission string) (bool, error) {
 	if store == nil {
 		return false, fmt.Errorf("grant store is required")
 	}
 
-	roles, err := store.GetUserRoles(ctx, userID)
+	roles, err := store.GetUserRoles(ctx, username)
 	if err != nil {
 		return false, fmt.Errorf("get user roles: %w", err)
 	}
@@ -181,12 +181,12 @@ func CheckPermission(ctx context.Context, store auth.GrantStore, userID uuid.UUI
 }
 
 // CheckAnyPermission checks if a user has any of the specified permissions
-func CheckAnyPermission(ctx context.Context, store auth.GrantStore, userID uuid.UUID, permissions []string) (bool, error) {
+func CheckAnyPermission(ctx context.Context, store auth.GrantStore, username string, permissions []string) (bool, error) {
 	if store == nil {
 		return false, fmt.Errorf("grant store is required")
 	}
 
-	roles, err := store.GetUserRoles(ctx, userID)
+	roles, err := store.GetUserRoles(ctx, username)
 	if err != nil {
 		return false, fmt.Errorf("get user roles: %w", err)
 	}
@@ -204,12 +204,12 @@ func CheckAnyPermission(ctx context.Context, store auth.GrantStore, userID uuid.
 }
 
 // CheckAllPermissions checks if a user has all of the specified permissions
-func CheckAllPermissions(ctx context.Context, store auth.GrantStore, userID uuid.UUID, permissions []string) (bool, error) {
+func CheckAllPermissions(ctx context.Context, store auth.GrantStore, username string, permissions []string) (bool, error) {
 	if store == nil {
 		return false, fmt.Errorf("grant store is required")
 	}
 
-	roles, err := store.GetUserRoles(ctx, userID)
+	roles, err := store.GetUserRoles(ctx, username)
 	if err != nil {
 		return false, fmt.Errorf("get user roles: %w", err)
 	}
@@ -227,10 +227,10 @@ func CheckAllPermissions(ctx context.Context, store auth.GrantStore, userID uuid
 }
 
 // HasRole checks if a user has a specific role by name
-func HasRole(ctx context.Context, store auth.GrantStore, userID uuid.UUID, roleName string) (bool, error) {
+func HasRole(ctx context.Context, store auth.GrantStore, username string, roleName string) (bool, error) {
 	if store == nil {
 		return false, fmt.Errorf("grant store is required")
 	}
 	roleName = auth.NormalizeRoleName(roleName)
-	return store.HasRole(ctx, userID, roleName)
+	return store.HasRole(ctx, username, roleName)
 }

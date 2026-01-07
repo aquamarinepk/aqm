@@ -11,6 +11,9 @@ import (
 
 // SystemHandler handles system-level operations like bootstrap and user lookup.
 // These endpoints are designed for inter-service communication during system initialization.
+// NOTE: Bootstrap endpoints could be disabled in production environments.
+// They exist for development/initial setup. Consider adding feature flag
+// to disable them when not needed.
 type SystemHandler struct {
 	userStore auth.UserStore
 	crypto    service.CryptoService
@@ -19,15 +22,17 @@ type SystemHandler struct {
 
 // SystemBootstrapStatusResponse represents the current bootstrap status
 type SystemBootstrapStatusResponse struct {
-	NeedsBootstrap bool   `json:"needs_bootstrap"`
-	SuperadminID   string `json:"superadmin_id,omitempty"`
+	NeedsBootstrap     bool   `json:"needs_bootstrap"`
+	SuperadminID       string `json:"superadmin_id,omitempty"`
+	SuperadminUsername string `json:"superadmin_username,omitempty"`
 }
 
 // SystemBootstrapResponse represents the result of bootstrap operation
 type SystemBootstrapResponse struct {
-	SuperadminID string `json:"superadmin_id"`
-	Email        string `json:"email"`
-	Password     string `json:"password"`
+	SuperadminID       string `json:"superadmin_id"`
+	SuperadminUsername string `json:"superadmin_username"`
+	Email              string `json:"email"`
+	Password           string `json:"password"`
 }
 
 // SystemUserIDResponse represents user lookup response
@@ -69,8 +74,9 @@ func (h *SystemHandler) GetBootstrapStatus(w http.ResponseWriter, r *http.Reques
 	}
 
 	writeJSON(w, http.StatusOK, SystemBootstrapStatusResponse{
-		NeedsBootstrap: false,
-		SuperadminID:   superadmin.ID.String(),
+		NeedsBootstrap:     false,
+		SuperadminID:       superadmin.ID.String(),
+		SuperadminUsername: superadmin.Username,
 	})
 }
 
@@ -87,9 +93,10 @@ func (h *SystemHandler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, SystemBootstrapResponse{
-		SuperadminID: user.ID.String(),
-		Email:        service.SuperadminEmail,
-		Password:     password,
+		SuperadminID:       user.ID.String(),
+		SuperadminUsername: user.Username,
+		Email:              service.SuperadminEmail,
+		Password:           password,
 	})
 }
 
