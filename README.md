@@ -35,6 +35,7 @@ Aquamarine provides focused packages for:
 - **Model helpers** - ID generation, timestamps, password hashing
 - **Validation** - Input validation utilities
 - **Crypto** - Token generation and cryptographic utilities
+- **PubSub** - Publisher/Subscriber interfaces with NATS support for event-driven architectures
 
 ## Architecture
 
@@ -55,6 +56,13 @@ Services that centralize cross-cutting concerns:
 - Request aggregation from multiple internal services
 - No orchestration logic leaking into domain services
 
+### Domain Services
+
+Services that own business logic and data:
+- Expose REST APIs for their bounded context
+- Publish domain events via PubSub (NATS)
+- Persist aggregates using the Store pattern
+
 ### Service Communication
 
 - **REST** - Default for service-to-service and external APIs
@@ -66,7 +74,7 @@ Services that centralize cross-cutting concerns:
 Aquamarine favors **aggregate-oriented modeling** (DDD principles):
 
 - Aggregates are persisted and updated as a whole
-- **Store pattern** abstracts persistence, independent of database type
+- Store pattern abstracts persistence, independent of database type
 - Specific store interfaces per aggregate, not generic repositories
 
 ### Supported Backends

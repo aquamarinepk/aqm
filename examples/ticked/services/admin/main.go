@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"os"
 	"os/signal"
@@ -9,9 +10,12 @@ import (
 
 	"github.com/aquamarinepk/aqm/app"
 	"github.com/aquamarinepk/aqm/config"
-	"github.com/aquamarinepk/aqm/examples/ticked/services/admin/internal"
+	"github.com/aquamarinepk/aqm/examples/ticked/services/admin/internal/admin"
 	"github.com/aquamarinepk/aqm/log"
 )
+
+//go:embed assets
+var assetsFS embed.FS
 
 const (
 	name    = "admin"
@@ -43,7 +47,7 @@ func main() {
 
 	var deps []any
 
-	svc, err := internal.New(cfg, logger)
+	svc, err := admin.New(assetsFS, cfg, logger)
 	if err != nil {
 		logger.Errorf("Cannot create service: %v", err)
 		os.Exit(1)

@@ -12,6 +12,8 @@ services:
     url: "http://localhost:8082"
   authz:
     url: "http://localhost:8083"
+  audit:
+    url: "http://localhost:8085"
 
 preflight:
-  enabled: true
+  enabled: false

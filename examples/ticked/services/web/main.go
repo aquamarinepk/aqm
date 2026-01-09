@@ -10,7 +10,7 @@ import (
 
 	"github.com/aquamarinepk/aqm/app"
 	"github.com/aquamarinepk/aqm/config"
-	"github.com/aquamarinepk/aqm/examples/ticked/services/web/internal"
+	websvc "github.com/aquamarinepk/aqm/examples/ticked/services/web/internal/web"
 	"github.com/aquamarinepk/aqm/log"
 	"github.com/aquamarinepk/aqm/web"
 )
@@ -51,7 +51,7 @@ func main() {
 	tmplMgr := web.NewTemplateManager(assetsFS, logger)
 	deps = append(deps, tmplMgr)
 
-	svc, err := internal.New(tmplMgr, cfg, logger)
+	svc, err := websvc.New(tmplMgr, cfg, logger)
 	if err != nil {
 		logger.Errorf("Cannot create service: %v", err)
 		os.Exit(1)

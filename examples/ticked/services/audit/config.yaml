@@ -7,8 +7,9 @@ database:
   port: 5432
   user: dev
   password: dev
-  name: ticked
+  database: ticked
   schema: audit
+  sslmode: disable
 
 nats:
   url: "nats://localhost:4222"

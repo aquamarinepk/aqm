@@ -10,7 +10,7 @@ import (
 
 	"github.com/aquamarinepk/aqm/app"
 	"github.com/aquamarinepk/aqm/config"
-	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/internal"
+	"github.com/aquamarinepk/aqm/examples/ticked/services/authn/internal/authn"
 	"github.com/aquamarinepk/aqm/log"
 )
 
@@ -55,7 +55,7 @@ func main() {
 
 	var deps []any
 
-	svc, err := internal.New(cfg, migrationsFS, logger)
+	svc, err := authn.New(migrationsFS, cfg, logger)
 	if err != nil {
 		logger.Errorf("Cannot create service: %v", err)
 		os.Exit(1)

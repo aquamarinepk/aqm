@@ -10,12 +10,12 @@ import (
 
 	"github.com/aquamarinepk/aqm/app"
 	"github.com/aquamarinepk/aqm/config"
-	"github.com/aquamarinepk/aqm/examples/ticked/services/audit/internal"
+	"github.com/aquamarinepk/aqm/examples/ticked/services/audit/internal/audit"
 	"github.com/aquamarinepk/aqm/log"
 )
 
-//go:embed db/migrations/*.sql
-var migrationsFS embed.FS
+//go:embed assets
+var assetsFS embed.FS
 
 const (
 	name    = "audit"
@@ -28,9 +28,6 @@ func main() {
 	cfg, err := config.New(logger,
 		config.WithPrefix("AUDIT_"),
 		config.WithFile("config.yaml"),
-		config.WithDefaults(map[string]interface{}{
-			"server.port": ":8085",
-		}),
 	)
 	if err != nil {
 		logger.Errorf("Cannot load config: %v", err)
@@ -50,7 +47,7 @@ func main() {
 
 	var deps []any
 
-	svc, err := internal.New(cfg, migrationsFS, logger)
+	svc, err := audit.New(assetsFS, cfg, logger)
 	if err != nil {
 		logger.Errorf("Cannot create service: %v", err)
 		os.Exit(1)

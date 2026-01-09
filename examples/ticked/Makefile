@@ -2,7 +2,7 @@
 
 # Variables
 SERVICES=web admin authn authz ticked audit
-SERVICE_PORTS=8080 8081 8082 8083 8084 8085
+SERVICE_PORTS=8080 8081 8082 8083 8084 8085 4222
 LOG_LINES?=100
 
 # Database configuration
@@ -79,6 +79,9 @@ run: build
 	@echo "🚀 Starting Ticked services..."
 	@$(MAKE) stop > /dev/null 2>&1 || true
 	@echo ""
+	@echo "   📦 Starting NATS on :4222..."
+	@nohup /usr/bin/nats-server -p 4222 > nats.log 2>&1 & echo $$! > nats.pid; \
+		sleep 1
 	@echo "   📦 Starting Web on :8080..."
 	@cd services/web && \
 		export WEB_SERVER_PORT=:8080 && \
@@ -92,7 +95,8 @@ run: build
 		export ADMIN_SERVER_PORT=:8081 && \
 		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8082 && \
 		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
-		export ADMIN_PREFLIGHT_ENABLED=true && \
+		export ADMIN_SERVICES_AUDIT_URL=http://localhost:8085 && \
+		export ADMIN_PREFLIGHT_ENABLED=false && \
 		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
 		sleep 2
 	@echo "   📦 Starting AuthN on :8082..."
@@ -154,6 +158,7 @@ run: build
 	@echo ""
 	@echo "🎉 All services started!"
 	@echo "📡 Services running:"
+	@echo "   • NATS: nats://localhost:4222 (message broker)"
 	@echo "   • Web: http://localhost:8080 (web interface)"
 	@echo "   • Admin: http://localhost:8081 (admin interface)"
 	@echo "   • AuthN: http://localhost:8082 (authentication)"
@@ -166,7 +171,6 @@ run: build
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
-	@echo "⚠️  NATS required: docker run -p 4222:4222 nats"
 
 # Run all services with fake driver (for testing)
 run-fake: build
@@ -187,7 +191,8 @@ run-fake: build
 		export ADMIN_SERVER_PORT=:8081 && \
 		export ADMIN_SERVICES_AUTHN_URL=http://localhost:8082 && \
 		export ADMIN_SERVICES_AUTHZ_URL=http://localhost:8083 && \
-		export ADMIN_PREFLIGHT_ENABLED=true && \
+		export ADMIN_SERVICES_AUDIT_URL=http://localhost:8085 && \
+		export ADMIN_PREFLIGHT_ENABLED=false && \
 		nohup ./admin > admin.log 2>&1 & echo $$! > admin.pid; \
 		sleep 2
 	@echo "   📦 Starting AuthN on :8082..."
@@ -249,6 +254,14 @@ stop:
 			rm -f "$$pid_file"; \
 		fi; \
 	done
+	@if [ -f "nats.pid" ]; then \
+		pid=$$(cat "nats.pid"); \
+		if ps -p "$$pid" >/dev/null 2>&1; then \
+			echo "   🛑 Stopping NATS (PID: $$pid)"; \
+			kill -9 "$$pid" 2>/dev/null || true; \
+		fi; \
+		rm -f "nats.pid"; \
+	fi
 	@echo "✅ All services stopped"
 
 # Stream consolidated logs

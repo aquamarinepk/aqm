@@ -28,9 +28,6 @@ func main() {
 	cfg, err := config.New(logger,
 		config.WithPrefix("TICKED_"),
 		config.WithFile("config.yaml"),
-		config.WithDefaults(map[string]interface{}{
-			"server.port": ":8084",
-		}),
 	)
 	if err != nil {
 		logger.Errorf("Cannot load config: %v", err)
@@ -50,7 +47,7 @@ func main() {
 
 	var deps []any
 
-	svc, err := internal.New(cfg, migrationsFS, logger)
+	svc, err := internal.New(migrationsFS, cfg, logger)
 	if err != nil {
 		logger.Errorf("Cannot create service: %v", err)
 		os.Exit(1)

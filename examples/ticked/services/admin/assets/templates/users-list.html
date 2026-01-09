@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Admin</title>
+    <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <a href="/admin">Dashboard</a>
+            <a href="/admin/list-users">Users</a>
+            <a href="/admin/list-events">Events</a>
+        </nav>
+
+        <h1>{{.Title}}</h1>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Users}}
+                <tr>
+                    <td>{{.Username}}</td>
+                    <td>{{.Email}}</td>
+                    <td>
+                        <span class="status status-{{.Status}}">{{.Status}}</span>
+                    </td>
+                    <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                    <td>
+                        <a href="/admin/get-user?id={{.ID}}">View</a>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    <button type="button" id="theme-toggle" title="Toggle theme (alt+d)">🌙</button>
+    <script src="/static/admin.js"></script>
+</body>
+</html>

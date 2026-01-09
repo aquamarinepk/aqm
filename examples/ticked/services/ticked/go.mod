@@ -2,8 +2,10 @@ module github.com/aquamarinepk/aqm/examples/ticked/services/ticked
 
 go 1.25.5
 
+replace github.com/aquamarinepk/aqm => ../../../..
+
 require (
-	github.com/aquamarinepk/aqm v0.0.0-00010101000000-000000000000
+	github.com/aquamarinepk/aqm v0.0.2
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
@@ -31,5 +33,3 @@ require (
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 )
-
-replace github.com/aquamarinepk/aqm => ../../../..

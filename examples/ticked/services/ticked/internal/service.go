@@ -26,7 +26,7 @@ type Service struct {
 }
 
 // New creates a new Service with the given configuration.
-func New(cfg *config.Config, migrationsFS embed.FS, logger log.Logger) (*Service, error) {
+func New(migrationsFS embed.FS, cfg *config.Config, logger log.Logger) (*Service, error) {
 	s := &Service{
 		cfg: cfg,
 		log: logger,
