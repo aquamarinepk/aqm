@@ -39,30 +39,10 @@ func (r *testStore) Delete(ctx context.Context, listID uuid.UUID) error {
 func TestNewService(t *testing.T) {
 	repo := &testStore{}
 
-	svc := NewService(repo, nil, nil)
+	svc := NewService(repo, nil, nil, nil)
 
 	if svc == nil {
 		t.Fatal("NewService() returned nil")
-	}
-
-	if svc.store != repo {
-		t.Error("repo not set correctly")
-	}
-
-	if svc.log == nil {
-		t.Error("logger should not be nil")
-	}
-
-	// Verify noop logger implements all methods without panicking
-	svc.log.Debug("test")
-	svc.log.Debugf("test %s", "format")
-	svc.log.Info("test")
-	svc.log.Infof("test %s", "format")
-	svc.log.Error("test")
-	svc.log.Errorf("test %s", "format")
-	newLogger := svc.log.With("key", "value")
-	if newLogger == nil {
-		t.Error("With should return non-nil logger")
 	}
 }
 
@@ -164,7 +144,7 @@ func TestServiceGetOrCreateList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := NewService(tt.repo, nil, nil)
+			svc := NewService(tt.repo, nil, nil, nil)
 
 			list, err := svc.GetOrCreateList(context.Background(), userID)
 
@@ -207,7 +187,7 @@ func TestServiceGetList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := NewService(tt.repo, nil, nil)
+			svc := NewService(tt.repo, nil, nil, nil)
 
 			list, err := svc.GetList(context.Background(), userID)
 
@@ -333,7 +313,7 @@ func TestServiceAddItem(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := NewService(tt.repo, nil, nil)
+			svc := NewService(tt.repo, nil, nil, nil)
 
 			list, err := svc.AddItem(context.Background(), userID, tt.text)
 
@@ -461,7 +441,7 @@ func TestServiceUpdateItem(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := NewService(tt.repo, nil, nil)
+			svc := NewService(tt.repo, nil, nil, nil)
 
 			list, err := svc.UpdateItem(context.Background(), userID, itemID, tt.text, tt.completed)
 
@@ -559,7 +539,7 @@ func TestServiceRemoveItem(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := NewService(tt.repo, nil, nil)
+			svc := NewService(tt.repo, nil, nil, nil)
 
 			list, err := svc.RemoveItem(context.Background(), userID, itemID)
 
@@ -569,21 +549,5 @@ func TestServiceRemoveItem(t *testing.T) {
 
 			tt.validate(t, list, err)
 		})
-	}
-}
-
-
-func TestNoopLogger(t *testing.T) {
-	l := &noopLogger{}
-	l.Debug("test")
-	l.Debugf("test %s", "arg")
-	l.Info("test")
-	l.Infof("test %s", "arg")
-	l.Error("test")
-	l.Errorf("test %s", "arg")
-
-	withLogger := l.With("key", "value")
-	if withLogger == nil {
-		t.Error("With() should return logger")
 	}
 }

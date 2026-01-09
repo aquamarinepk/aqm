@@ -3,14 +3,21 @@ package list
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/aquamarinepk/aqm/config"
 	"github.com/aquamarinepk/aqm/log"
+	"github.com/aquamarinepk/aqm/pubsub"
 	"github.com/google/uuid"
 )
 
-// ServiceInterface defines the business logic operations for todo lists.
-type ServiceInterface interface {
+const (
+	// AuditTopic is the pubsub topic for audit events.
+	AuditTopic = "audit.todo"
+)
+
+// Service defines the business logic operations for todo lists.
+type Service interface {
 	GetOrCreateList(ctx context.Context, userID uuid.UUID) (*TodoList, error)
 	GetList(ctx context.Context, userID uuid.UUID) (*TodoList, error)
 	AddItem(ctx context.Context, userID uuid.UUID, text string) (*TodoList, error)
@@ -18,27 +25,29 @@ type ServiceInterface interface {
 	RemoveItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*TodoList, error)
 }
 
-// Service contains business logic for todo lists.
-type Service struct {
-	store TodoListStore
-	cfg   *config.Config
-	log   log.Logger
+// service contains business logic for todo lists.
+type service struct {
+	store     TodoListStore
+	publisher pubsub.Publisher
+	cfg       *config.Config
+	log       log.Logger
 }
 
 // NewService creates a new service instance.
-func NewService(store TodoListStore, cfg *config.Config, log log.Logger) *Service {
-	if log == nil {
-		log = &noopLogger{}
+func NewService(store TodoListStore, publisher pubsub.Publisher, cfg *config.Config, logger log.Logger) Service {
+	if logger == nil {
+		logger = log.NewNoopLogger()
 	}
-	return &Service{
-		store: store,
-		log:   log,
-		cfg:  cfg,
+	return &service{
+		store:     store,
+		publisher: publisher,
+		cfg:       cfg,
+		log:       logger,
 	}
 }
 
 // GetOrCreateList retrieves a user's list or creates it if it doesn't exist.
-func (s *Service) GetOrCreateList(ctx context.Context, userID uuid.UUID) (*TodoList, error) {
+func (s *service) GetOrCreateList(ctx context.Context, userID uuid.UUID) (*TodoList, error) {
 	list, err := s.store.FindByUserID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -56,7 +65,7 @@ func (s *Service) GetOrCreateList(ctx context.Context, userID uuid.UUID) (*TodoL
 }
 
 // GetList retrieves a user's list.
-func (s *Service) GetList(ctx context.Context, userID uuid.UUID) (*TodoList, error) {
+func (s *service) GetList(ctx context.Context, userID uuid.UUID) (*TodoList, error) {
 	list, err := s.store.FindByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -66,13 +75,14 @@ func (s *Service) GetList(ctx context.Context, userID uuid.UUID) (*TodoList, err
 }
 
 // AddItem adds an item to a user's list.
-func (s *Service) AddItem(ctx context.Context, userID uuid.UUID, text string) (*TodoList, error) {
+func (s *service) AddItem(ctx context.Context, userID uuid.UUID, text string) (*TodoList, error) {
 	list, err := s.GetOrCreateList(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := list.AddItem(text); err != nil {
+	item, err := list.AddItem(text)
+	if err != nil {
 		return nil, err
 	}
 
@@ -80,12 +90,17 @@ func (s *Service) AddItem(ctx context.Context, userID uuid.UUID, text string) (*
 		return nil, err
 	}
 
+	// Publish audit event
+	s.publishEvent(ctx, "todo.item.added", userID.String(), item.ItemID.String(), map[string]string{
+		"title": text,
+	})
+
 	list.SortByCreatedAt()
 	return list, nil
 }
 
 // UpdateItem updates an item in a user's list.
-func (s *Service) UpdateItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, text *string, completed *bool) (*TodoList, error) {
+func (s *service) UpdateItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, text *string, completed *bool) (*TodoList, error) {
 	list, err := s.store.FindByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -99,12 +114,17 @@ func (s *Service) UpdateItem(ctx context.Context, userID uuid.UUID, itemID uuid.
 		return nil, err
 	}
 
+	// Publish audit event
+	if completed != nil && *completed {
+		s.publishEvent(ctx, "todo.item.completed", userID.String(), itemID.String(), nil)
+	}
+
 	list.SortByCreatedAt()
 	return list, nil
 }
 
 // RemoveItem removes an item from a user's list.
-func (s *Service) RemoveItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*TodoList, error) {
+func (s *service) RemoveItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*TodoList, error) {
 	list, err := s.store.FindByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -118,17 +138,40 @@ func (s *Service) RemoveItem(ctx context.Context, userID uuid.UUID, itemID uuid.
 		return nil, err
 	}
 
+	// Publish audit event
+	s.publishEvent(ctx, "todo.item.removed", userID.String(), itemID.String(), nil)
+
 	list.SortByCreatedAt()
 	return list, nil
 }
 
-// noopLogger is a no-op logger implementation.
-type noopLogger struct{}
+// publishEvent publishes an audit event via the configured publisher.
+func (s *service) publishEvent(ctx context.Context, eventType, userID, itemID string, data map[string]string) {
+	if s.publisher == nil {
+		return
+	}
 
-func (l *noopLogger) Debug(v ...any)                  {}
-func (l *noopLogger) Debugf(format string, a ...any)  {}
-func (l *noopLogger) Info(v ...any)                   {}
-func (l *noopLogger) Infof(format string, a ...any)   {}
-func (l *noopLogger) Error(v ...any)                  {}
-func (l *noopLogger) Errorf(format string, a ...any)  {}
-func (l *noopLogger) With(args ...any) log.Logger     { return l }
+	payload := map[string]string{
+		"event_type": eventType,
+		"item_id":    itemID,
+	}
+	for k, v := range data {
+		payload[k] = v
+	}
+
+	env := pubsub.Envelope{
+		ID:        uuid.New().String(),
+		Topic:     AuditTopic,
+		Timestamp: time.Now(),
+		Payload:   payload,
+		Metadata: map[string]string{
+			"user_id": userID,
+			"source":  "ticked",
+		},
+	}
+
+	if err := s.publisher.Publish(ctx, AuditTopic, env); err != nil {
+		s.log.Errorf("failed to publish audit event: %v", err)
+	}
+}
+

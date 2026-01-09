@@ -1,8 +1,8 @@
 # Makefile for Ticked example (aqm microservices orchestration)
 
 # Variables
-SERVICES=web admin authn authz ticked
-SERVICE_PORTS=8080 8081 8082 8083 8084
+SERVICES=web admin authn authz ticked audit
+SERVICE_PORTS=8080 8081 8082 8083 8084 8085
 LOG_LINES?=100
 
 # Database configuration
@@ -11,7 +11,10 @@ DB_PORT?=5432
 DB_USER?=dev
 DB_PASS?=dev
 DB_NAME?=ticked
-SCHEMAS=authn authz ticked
+SCHEMAS=authn authz ticked audit
+
+# NATS configuration
+NATS_URL?=nats://localhost:4222
 
 # Phony targets
 .PHONY: help build run run-fake stop logs logs-clear fresh test test-all clean db-init db-drop db-reset seed-test-user
@@ -67,6 +70,9 @@ build-ticked:
 
 build-web:
 	@cd services/web && go build -o web . && echo "✅ Web built"
+
+build-audit:
+	@cd services/audit && go build -o audit . && echo "✅ Audit built"
 
 # Run all services
 run: build
@@ -129,7 +135,21 @@ run: build
 		export TICKED_DATABASE_NAME=$(DB_NAME) && \
 		export TICKED_DATABASE_SCHEMA=ticked && \
 		export TICKED_SERVER_PORT=:8084 && \
+		export TICKED_NATS_URL=$(NATS_URL) && \
 		nohup ./ticked > ticked.log 2>&1 & echo $$! > ticked.pid; \
+		sleep 2
+	@echo "   📦 Starting Audit on :8085..."
+	@cd services/audit && \
+		export AUDIT_DATABASE_DRIVER=postgres && \
+		export AUDIT_DATABASE_HOST=$(DB_HOST) && \
+		export AUDIT_DATABASE_PORT=$(DB_PORT) && \
+		export AUDIT_DATABASE_USER=$(DB_USER) && \
+		export AUDIT_DATABASE_PASSWORD=$(DB_PASS) && \
+		export AUDIT_DATABASE_NAME=$(DB_NAME) && \
+		export AUDIT_DATABASE_SCHEMA=audit && \
+		export AUDIT_SERVER_PORT=:8085 && \
+		export AUDIT_NATS_URL=$(NATS_URL) && \
+		nohup ./audit > audit.log 2>&1 & echo $$! > audit.pid; \
 		sleep 2
 	@echo ""
 	@echo "🎉 All services started!"
@@ -139,12 +159,14 @@ run: build
 	@echo "   • AuthN: http://localhost:8082 (authentication)"
 	@echo "   • AuthZ: http://localhost:8083 (authorization)"
 	@echo "   • Ticked: http://localhost:8084 (todo lists)"
+	@echo "   • Audit: http://localhost:8085 (audit events)"
 	@echo ""
 	@sleep 2
 	@$(MAKE) seed-test-user > /dev/null 2>&1 || true
 	@echo ""
 	@echo "💡 View logs: make logs"
 	@echo "🛑 Stop services: make stop"
+	@echo "⚠️  NATS required: docker run -p 4222:4222 nats"
 
 # Run all services with fake driver (for testing)
 run-fake: build
@@ -234,7 +256,7 @@ logs:
 	@echo "📜 Streaming logs from all services (last $(LOG_LINES) lines)..."
 	@echo "   Press Ctrl+C to stop"
 	@echo ""
-	@tail -n $(LOG_LINES) -F services/authn/authn.log services/authz/authz.log services/admin/admin.log services/ticked/ticked.log 2>/dev/null | \
+	@tail -n $(LOG_LINES) -F services/authn/authn.log services/authz/authz.log services/admin/admin.log services/ticked/ticked.log services/audit/audit.log 2>/dev/null | \
 		awk '/^==> / { service=$$2; gsub(/^services\/|\/.*\.log/, "", service); next } \
 		     { printf "\033[1;36m[%s]\033[0m %s\n", service, $$0; fflush(); }' || \
 		echo "⚠️  No log files found. Start services with 'make run'"
@@ -293,6 +315,9 @@ test-admin:
 test-ticked:
 	@cd services/ticked && go test ./...
 
+test-audit:
+	@cd services/audit && go test ./...
+
 # Clean all generated files
 clean:
 	@echo "🧹 Cleaning up..."
@@ -310,7 +335,7 @@ db-init:
 	@echo "   📦 Creating database $(DB_NAME)..."
 	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d postgres -c "CREATE DATABASE $(DB_NAME) OWNER $(DB_USER);" 2>/dev/null || echo "   ⚠️  $(DB_NAME) already exists"
 	@echo "   📦 Creating schemas: $(SCHEMAS)..."
-	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d $(DB_NAME) -c "CREATE SCHEMA IF NOT EXISTS authn AUTHORIZATION $(DB_USER); CREATE SCHEMA IF NOT EXISTS authz AUTHORIZATION $(DB_USER); CREATE SCHEMA IF NOT EXISTS ticked AUTHORIZATION $(DB_USER);" 2>/dev/null
+	@PGPASSWORD=$(DB_PASS) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d $(DB_NAME) -c "CREATE SCHEMA IF NOT EXISTS authn AUTHORIZATION $(DB_USER); CREATE SCHEMA IF NOT EXISTS authz AUTHORIZATION $(DB_USER); CREATE SCHEMA IF NOT EXISTS ticked AUTHORIZATION $(DB_USER); CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION $(DB_USER);" 2>/dev/null
 	@echo "✅ Database and schemas ready"
 
 db-drop:

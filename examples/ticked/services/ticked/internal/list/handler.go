@@ -13,19 +13,19 @@ import (
 
 // Handler wires HTTP routes for todo lists.
 type Handler struct {
-	service ServiceInterface
+	service Service
 	log     log.Logger
 	cfg     *config.Config
 }
 
 // NewHandler creates a new handler instance.
-func NewHandler(service ServiceInterface, cfg *config.Config, log log.Logger) *Handler {
-	if log == nil {
-		log = &noopLogger{}
+func NewHandler(service Service, cfg *config.Config, logger log.Logger) *Handler {
+	if logger == nil {
+		logger = log.NewNoopLogger()
 	}
 	return &Handler{
 		service: service,
-		log:     log,
+		log:     logger,
 		cfg:     cfg,
 	}
 }

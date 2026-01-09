@@ -1,11 +1,10 @@
-module github.com/aquamarinepk/aqm/examples/ticked/services/ticked
+module github.com/aquamarinepk/aqm/examples/ticked/services/audit
 
 go 1.25.5
 
 require (
 	github.com/aquamarinepk/aqm v0.0.0-00010101000000-000000000000
 	github.com/go-chi/chi/v5 v5.2.3
-	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 )
 
@@ -13,6 +12,7 @@ require (
 	aidanwoods.dev/go-paseto v1.6.0 // indirect
 	aidanwoods.dev/go-result v0.3.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/knadh/koanf/parsers/yaml v1.1.0 // indirect

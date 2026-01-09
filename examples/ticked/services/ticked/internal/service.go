@@ -10,15 +10,17 @@ import (
 	"github.com/aquamarinepk/aqm/examples/ticked/services/ticked/internal/list"
 	"github.com/aquamarinepk/aqm/log"
 	"github.com/aquamarinepk/aqm/migrate"
+	"github.com/aquamarinepk/aqm/pubsub/nats"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/lib/pq"
 )
 
 // Service coordinates the ticked service components and manages lifecycle.
 type Service struct {
-	cfg *config.Config
-	log log.Logger
-	db  *sql.DB
+	cfg    *config.Config
+	log    log.Logger
+	db     *sql.DB
+	broker *nats.Broker
 
 	listHandler *list.Handler
 }
@@ -60,8 +62,22 @@ func New(cfg *config.Config, migrationsFS embed.FS, logger log.Logger) (*Service
 		store = list.NewMemStore()
 	}
 
+	// Initialize NATS broker if configured using static config
+	if cfg.NATS.URL != "" {
+		natsCfg := nats.Config{
+			URL:            cfg.NATS.URL,
+			MaxReconnect:   cfg.NATS.MaxReconnect,
+			ReconnectWait:  nats.DefaultConfig().ReconnectWait,
+			ConnectTimeout: nats.DefaultConfig().ConnectTimeout,
+		}
+		if natsCfg.MaxReconnect == 0 {
+			natsCfg.MaxReconnect = nats.DefaultConfig().MaxReconnect
+		}
+		s.broker = nats.NewBroker(natsCfg, logger)
+	}
+
 	// Initialize service and handler
-	listService := list.NewService(store, cfg, logger)
+	listService := list.NewService(store, s.broker, cfg, logger)
 	s.listHandler = list.NewHandler(listService, cfg, logger)
 
 	return s, nil
@@ -69,6 +85,14 @@ func New(cfg *config.Config, migrationsFS embed.FS, logger log.Logger) (*Service
 
 // Start initializes the service.
 func (s *Service) Start(ctx context.Context) error {
+	// Start NATS broker if configured
+	if s.broker != nil {
+		if err := s.broker.Start(ctx); err != nil {
+			return fmt.Errorf("cannot start NATS broker: %w", err)
+		}
+		s.log.Info("NATS broker started")
+	}
+
 	s.log.Info("Service started successfully")
 	return nil
 }
@@ -80,6 +104,12 @@ func (s *Service) RegisterRoutes(r chi.Router) {
 
 // Stop gracefully shuts down the service and closes database connections.
 func (s *Service) Stop(ctx context.Context) error {
+	if s.broker != nil {
+		if err := s.broker.Stop(ctx); err != nil {
+			s.log.Errorf("Error stopping NATS broker: %v", err)
+		}
+	}
+
 	if s.db != nil {
 		if err := s.db.Close(); err != nil {
 			return fmt.Errorf("database close error: %w", err)

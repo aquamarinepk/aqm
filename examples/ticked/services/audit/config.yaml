@@ -1,0 +1,14 @@
+server:
+  port: ":8085"
+
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  user: dev
+  password: dev
+  name: ticked
+  schema: audit
+
+nats:
+  url: "nats://localhost:4222"
